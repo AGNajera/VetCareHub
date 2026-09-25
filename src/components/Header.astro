@@ -1,1 +1,36 @@
-<header></header>
+<header>
+  <nav>
+    <a href="/">Inicio</a>
+    <a href="">Nosotros</a>
+  </nav>
+</header>
+
+<style>
+  header {
+    width: 100%;
+    height: fit-content;
+    background-color: oklch(97% 1% 89deg);
+    position: sticky;
+    top: 0;
+    margin-bottom: 20px;
+  }
+
+  nav {
+    display: flex;
+    gap: 8px;
+    align-items: self-start;
+    padding: 12px;
+    width: fit-content;
+
+    a {
+      text-align: center;
+      color: #01215b;
+      font-size: 1.2rem;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+</style>
