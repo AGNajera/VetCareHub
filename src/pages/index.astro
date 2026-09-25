@@ -1,0 +1,30 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout>
+  <div class="page">
+    <Header />
+    <div class="hero-page">
+      <Hero />
+    </div>
+    <Footer />
+  </div>
+</Layout>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .hero-page {
+    display: flex;
+    min-height: 100%;
+  }
+</style>
