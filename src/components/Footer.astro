@@ -1,1 +1,78 @@
-<footer></footer>
+---
+import PhoneIcon from "../assets/phone.svg";
+import MailIcon from "../assets/mail.svg";
+import MapIcon from "../assets/map-pin.svg";
+import FacebookIcon from "../assets/brand-facebook.svg";
+import InstagramIcon from "../assets/brand-instagram.svg";
+import TikTokIcon from "../assets/brand-tiktok.svg";
+---
+
+<footer>
+  <aside class="contact-list">
+    <h3>Contacto</h3>
+    <div class="contact-phone">
+      <PhoneIcon />
+      <p>7771234567</p>
+    </div>
+    <div class="contact-address">
+      <MapIcon />
+      <p>Av Emiliano Zapata 123, Tlaltenango, Cuernavaca Morelos</p>
+    </div>
+    <div class="contact-mail">
+      <MailIcon />
+      <a href="mailto:vetcarehubmx@gmail.com">vetcarehubmx@gmail.com</a>
+    </div>
+  </aside>
+</footer>
+
+<style>
+  footer {
+    width: 100%;
+    height: 100%;
+    background-color: oklch(97% 1% 89deg);
+  }
+
+  .contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: baseline;
+    justify-content: center;
+    padding: 6px;
+    width: 20dvw;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-family: "SimplySans-Bold";
+  }
+
+  .contact-phone,
+  .contact-address,
+  .contact-mail {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .contact-address {
+    p {
+      width: 80%;
+    }
+  }
+
+  a {
+    text-decoration: none;
+    color: #01215b;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .icon {
+    width: 32px;
+    height: 32px;
+    color: #01215b;
+  }
+</style>
