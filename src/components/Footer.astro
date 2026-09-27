@@ -5,10 +5,29 @@ import MapIcon from "../assets/map-pin.svg";
 import FacebookIcon from "../assets/brand-facebook.svg";
 import InstagramIcon from "../assets/brand-instagram.svg";
 import TikTokIcon from "../assets/brand-tiktok.svg";
+import Logo from "../assets/logo.svg";
 ---
 
-<footer>
+<footer id="contacto">
+  <ul class="socials" aria-label="Redes sociales">
+    <li>
+      <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook">
+        <FacebookIcon />
+      </a>
+    </li>
+    <li>
+      <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+        <InstagramIcon />
+      </a>
+    </li>
+    <li>
+      <a href="https://tiktok.com" target="_blank" rel="noopener" aria-label="TikTok">
+        <TikTokIcon />
+      </a>
+    </li>
+  </ul>
   <aside class="contact-list">
+    <Logo class="footer-logo" aria-hidden="true" />
     <h3>Contacto</h3>
     <div class="contact-phone">
       <PhoneIcon />
@@ -26,23 +45,72 @@ import TikTokIcon from "../assets/brand-tiktok.svg";
 </footer>
 
 <style>
+  /* Contacto a la izquierda y redes centradas en la misma fila, alineados arriba.
+     La 3a columna vacía equilibra el grid para que las redes queden al centro real */
   footer {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    gap: 24px;
     width: 100%;
-    height: 100%;
+    padding: 32px 16px;
     background-color: oklch(97% 1% 89deg);
+    border-top: 2px solid #01215b;
+  }
+
+  .socials {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    a {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      border: 2px solid #01215b;
+      border-radius: 14px;
+      background-color: #fff;
+
+      &:hover {
+        background-color: #01215b;
+        text-decoration: none;
+
+        .icon {
+          color: #fff;
+        }
+      }
+
+      &:focus-visible {
+        outline: 3px solid #3f8f7a;
+        outline-offset: 3px;
+      }
+    }
   }
 
   .contact-list {
+    grid-column: 1;
+    grid-row: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
     align-items: baseline;
     justify-content: center;
     padding: 6px;
-    width: 20dvw;
+    width: min(100%, 360px);
+  }
+
+  .footer-logo {
+    width: 64px;
+    height: 64px;
   }
 
   h3 {
+    margin: 4px 0 8px;
     font-size: 1.5rem;
     font-family: "SimplySans-Bold";
   }
@@ -74,5 +142,26 @@ import TikTokIcon from "../assets/brand-tiktok.svg";
     width: 32px;
     height: 32px;
     color: #01215b;
+  }
+
+  .contact-list p {
+    margin: 6px 0;
+  }
+
+  /* En pantallas angostas: redes centradas arriba y contacto debajo */
+  @media (max-width: 720px) {
+    footer {
+      grid-template-columns: 1fr;
+    }
+
+    .socials {
+      grid-column: 1;
+      justify-self: center;
+    }
+
+    .contact-list {
+      grid-column: 1;
+      grid-row: 2;
+    }
   }
 </style>
