@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
     <title>VetCareHub</title>
   </head>
   <body>
@@ -12,7 +11,19 @@
   </body>
 </html>
 
-<style>
+<style is:global>
+  @font-face {
+    font-family: "SimplySans-Book";
+    src: url("/SimplySans-Book.woff2") format("woff2");
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "SimplySans-Bold";
+    src: url("/SimplySans-Bold.woff2") format("woff2");
+    font-display: swap;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -22,5 +33,17 @@
     margin: 0;
     width: 100%;
     height: 100%;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Evita que el header sticky tape los títulos al navegar con anclas */
+    scroll-padding-top: 64px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 </style>
