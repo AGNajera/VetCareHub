@@ -28,6 +28,8 @@
   :root {
     --color-primary: #01215b;
     --color-accent: #3f8f7a;
+    /* Menta de las ilustraciones del carrusel */
+    --color-mint: #dff0ea;
     --color-white: #fff;
     --color-bg: oklch(100% 0% 68deg);
     --color-surface: oklch(97% 1% 89deg);
@@ -59,6 +61,26 @@
     scroll-behavior: smooth;
     /* Evita que el header sticky tape los títulos al navegar con anclas */
     scroll-padding-top: 64px;
+  }
+
+  /* Secciones de contenido debajo del hero: mismo ancho, márgenes y títulos */
+  .section {
+    width: min(100%, 1080px);
+    margin-inline: auto;
+    padding: 56px 16px;
+
+    h2 {
+      margin: 0 0 12px;
+      font-family: var(--font-bold);
+      font-size: 2rem;
+    }
+  }
+
+  .section-intro {
+    max-width: 60ch;
+    margin: 0 0 32px;
+    font-size: 1.15rem;
+    line-height: 1.55;
   }
 
   @media (prefers-reduced-motion: reduce) {

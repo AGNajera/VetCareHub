@@ -1,0 +1,117 @@
+---
+import Stethoscope from "../assets/stethoscope.svg";
+import Vaccine from "../assets/vaccine.svg";
+import Scissors from "../assets/scissors.svg";
+import Microscope from "../assets/microscope.svg";
+import HeartRate from "../assets/heart-rate-monitor.svg";
+import Bath from "../assets/bath.svg";
+
+const servicios = [
+  {
+    Icono: Stethoscope,
+    titulo: "Consulta general",
+    texto:
+      "Revisión completa de nariz a cola, con diagnóstico y plan de cuidados por escrito.",
+  },
+  {
+    Icono: Vaccine,
+    titulo: "Vacunación y desparasitación",
+    texto:
+      "Esquemas para cachorros y adultos. Anotamos cada dosis en su cartilla y te avisamos cuando toca la siguiente.",
+  },
+  {
+    Icono: Scissors,
+    titulo: "Cirugía y esterilización",
+    texto:
+      "Quirófano propio, anestesia inhalada y monitoreo de signos vitales durante todo el procedimiento.",
+  },
+  {
+    Icono: Microscope,
+    titulo: "Laboratorio e imagen",
+    texto:
+      "Análisis de sangre, rayos X y ultrasonido aquí mismo. La mayoría de los resultados están el mismo día.",
+  },
+  {
+    Icono: HeartRate,
+    titulo: "Hospitalización",
+    texto:
+      "Áreas separadas para perros y gatos. Te mandamos fotos y un reporte diario por WhatsApp.",
+  },
+  {
+    Icono: Bath,
+    titulo: "Estética y baño",
+    texto:
+      "Baño medicado, corte de pelo y de uñas. En cada visita revisamos piel y oídos.",
+  },
+];
+---
+
+<section id="servicios" class="section">
+  <h2>Servicios</h2>
+  <p class="section-intro">
+    Casi todo se resuelve en la clínica, sin mandarte a otro lado para un
+    estudio o una cirugía.
+  </p>
+
+  <ul class="servicios">
+    {
+      servicios.map(({ Icono, titulo, texto }) => (
+        <li>
+          <span class="icono">
+            <Icono aria-hidden="true" />
+          </span>
+          <h3>{titulo}</h3>
+          <p>{texto}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<style>
+  /* El fondo marino asoma por el gap de 2px y hace de borde compartido entre celdas,
+     igual que los separadores del menú */
+  .servicios {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: var(--color-primary);
+
+    li {
+      padding: 24px;
+      background-color: var(--color-white);
+    }
+  }
+
+  .icono {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: var(--border);
+    border-radius: 50%;
+    background-color: var(--color-mint);
+
+    .icon {
+      width: 30px;
+      height: 30px;
+    }
+  }
+
+  h3 {
+    margin: 16px 0 6px;
+    font-family: var(--font-bold);
+    font-size: 1.3rem;
+  }
+
+  li p {
+    margin: 0;
+    line-height: 1.5;
+  }
+</style>
