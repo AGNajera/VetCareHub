@@ -2,53 +2,21 @@
 import Carrusel from "./Carrusel.astro";
 ---
 
-<main id="inicio">
+<section id="inicio" class="hero">
   <h1>VetCareHub, clínica veterinaria en Cuernavaca</h1>
 
   <Carrusel />
-
-  <section id="nosotros" class="about">
-    <h2>Nosotros</h2>
-    <p>
-      Somos una clínica veterinaria familiar en Tlaltenango, Cuernavaca.
-      Atendemos perros, gatos y pequeñas especies desde 2014.
-    </p>
-    <p>
-      Ofrecemos consulta general, vacunación, desparasitación, cirugía y
-      estética. Cada paciente sale con su cartilla al día y un plan claro de
-      cuidados para casa.
-    </p>
-    <p>Abrimos de lunes a sábado, de 9:00 a 19:00. Urgencias por teléfono.</p>
-  </section>
-</main>
+</section>
 
 <style>
-  main {
+  .hero {
     width: 100%;
 
     h1 {
+      margin: 32px 16px 0;
       font-family: var(--font-bold);
       font-size: 2.3rem;
       text-align: center;
-    }
-  }
-
-  .about {
-    max-width: 62ch;
-    margin: 24px auto 64px;
-    padding: 0 16px;
-    text-align: center;
-
-    h2 {
-      margin: 0 0 16px;
-      font-family: var(--font-bold);
-      font-size: 2rem;
-    }
-
-    p {
-      margin: 0 0 12px;
-      font-size: 1.15rem;
-      line-height: 1.55;
     }
   }
 </style>
