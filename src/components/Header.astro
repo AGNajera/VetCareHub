@@ -1,7 +1,7 @@
 <header>
-  <nav>
+  <nav aria-label="Principal">
     <a href="/">Inicio</a>
-    <a href="">Nosotros</a>
+    <a href="#nosotros">Nosotros</a>
   </nav>
 </header>
 
@@ -10,20 +10,24 @@
     width: 100%;
     height: fit-content;
     background-color: oklch(97% 1% 89deg);
+    border-bottom: 2px solid #01215b;
     position: sticky;
     top: 0;
-    margin-bottom: 20px;
+    z-index: 10;
   }
 
   nav {
     display: flex;
-    gap: 8px;
-    align-items: self-start;
-    padding: 12px;
+    align-items: stretch;
     width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
 
     a {
+      padding: 14px 20px;
+      border-right: 2px solid #01215b;
       text-align: center;
+      white-space: nowrap;
       color: #01215b;
       font-size: 1.2rem;
       text-decoration: none;
@@ -31,6 +35,23 @@
       &:hover {
         text-decoration: underline;
       }
+
+      &:focus-visible {
+        outline: 3px solid #3f8f7a;
+        outline-offset: -3px;
+      }
+    }
+
+    .cta {
+      background-color: #01215b;
+      color: #fff;
+    }
+  }
+
+  @media (max-width: 480px) {
+    nav a {
+      padding: 12px 14px;
+      font-size: 1rem;
     }
   }
 </style>
