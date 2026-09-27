@@ -22,69 +22,12 @@ import Carrusel from "./Carrusel.astro";
   </section>
 </main>
 
-<script>
-  const carousel = document.querySelector<HTMLElement>(".carousel");
-  if (carousel) {
-    const slides = [...carousel.querySelectorAll<HTMLImageElement>(".slide")];
-    const dots = [...document.querySelectorAll<HTMLButtonElement>(".dot")];
-    const caption = document.querySelector<HTMLElement>(".caption");
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    let current = 0;
-    let timer: number | undefined;
-
-    const show = (index: number) => {
-      current = (index + slides.length) % slides.length;
-      slides.forEach((slide, i) => {
-        slide.classList.toggle("is-active", i === current);
-        slide.setAttribute("aria-hidden", String(i !== current));
-      });
-      dots.forEach((dot, i) =>
-        dot.setAttribute("aria-current", String(i === current)),
-      );
-      if (caption) caption.textContent = slides[current].dataset.caption ?? "";
-      carousel.style.setProperty("--tint", slides[current].dataset.tint ?? "");
-    };
-
-    // Avance automático cada 6s; se pausa al pasar el mouse o enfocar el carrusel
-    const start = () => {
-      if (reduceMotion) return;
-      stop();
-      timer = window.setInterval(() => show(current + 1), 6000);
-    };
-    const stop = () => window.clearInterval(timer);
-
-    carousel.querySelector(".prev")?.addEventListener("click", () => {
-      show(current - 1);
-      start();
-    });
-    carousel.querySelector(".next")?.addEventListener("click", () => {
-      show(current + 1);
-      start();
-    });
-    dots.forEach((dot, i) =>
-      dot.addEventListener("click", () => {
-        show(i);
-        start();
-      }),
-    );
-
-    carousel.addEventListener("mouseenter", stop);
-    carousel.addEventListener("mouseleave", start);
-    carousel.addEventListener("focusin", stop);
-    carousel.addEventListener("focusout", start);
-
-    start();
-  }
-</script>
-
 <style>
   main {
     width: 100%;
 
     h1 {
-      font-family: "SimplySans-Bold";
+      font-family: var(--font-bold);
       font-size: 2.3rem;
       text-align: center;
     }
@@ -98,7 +41,7 @@ import Carrusel from "./Carrusel.astro";
 
     h2 {
       margin: 0 0 16px;
-      font-family: "SimplySans-Bold";
+      font-family: var(--font-bold);
       font-size: 2rem;
     }
 
@@ -106,13 +49,6 @@ import Carrusel from "./Carrusel.astro";
       margin: 0 0 12px;
       font-size: 1.15rem;
       line-height: 1.55;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .carousel,
-    .slide {
-      transition: none;
     }
   }
 </style>

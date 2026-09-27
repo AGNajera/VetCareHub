@@ -54,8 +54,8 @@ import Logo from "../assets/logo.svg";
     gap: 24px;
     width: 100%;
     padding: 32px 16px;
-    background-color: oklch(97% 1% 89deg);
-    border-top: 2px solid #01215b;
+    background-color: var(--color-surface);
+    border-top: var(--border);
   }
 
   .socials {
@@ -72,21 +72,21 @@ import Logo from "../assets/logo.svg";
       place-items: center;
       width: 56px;
       height: 56px;
-      border: 2px solid #01215b;
+      border: var(--border);
       border-radius: 14px;
-      background-color: #fff;
+      background-color: var(--color-white);
 
       &:hover {
-        background-color: #01215b;
+        background-color: var(--color-primary);
         text-decoration: none;
 
         .icon {
-          color: #fff;
+          color: var(--color-white);
         }
       }
 
       &:focus-visible {
-        outline: 3px solid #3f8f7a;
+        outline: var(--focus-ring);
         outline-offset: 3px;
       }
     }
@@ -112,7 +112,7 @@ import Logo from "../assets/logo.svg";
   h3 {
     margin: 4px 0 8px;
     font-size: 1.5rem;
-    font-family: "SimplySans-Bold";
+    font-family: var(--font-bold);
   }
 
   .contact-phone,
@@ -131,7 +131,7 @@ import Logo from "../assets/logo.svg";
 
   a {
     text-decoration: none;
-    color: #01215b;
+    color: var(--color-primary);
 
     &:hover {
       text-decoration: underline;
@@ -141,7 +141,7 @@ import Logo from "../assets/logo.svg";
   .icon {
     width: 32px;
     height: 32px;
-    color: #01215b;
+    color: var(--color-primary);
   }
 
   .contact-list p {

@@ -9,8 +9,8 @@
   header {
     width: 100%;
     height: fit-content;
-    background-color: oklch(97% 1% 89deg);
-    border-bottom: 2px solid #01215b;
+    background-color: var(--color-surface);
+    border-bottom: var(--border);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -25,10 +25,10 @@
 
     a {
       padding: 14px 20px;
-      border-right: 2px solid #01215b;
+      border-right: var(--border);
       text-align: center;
       white-space: nowrap;
-      color: #01215b;
+      color: var(--color-primary);
       font-size: 1.2rem;
       text-decoration: none;
 
@@ -37,14 +37,14 @@
       }
 
       &:focus-visible {
-        outline: 3px solid #3f8f7a;
+        outline: var(--focus-ring);
         outline-offset: -3px;
       }
     }
 
     .cta {
-      background-color: #01215b;
-      color: #fff;
+      background-color: var(--color-primary);
+      color: var(--color-white);
     }
   }
 
