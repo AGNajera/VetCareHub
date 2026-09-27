@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <!-- Consultorio: perro en la mesa de revisión -->
+  <rect width="800" height="800" fill="#dff0ea" />
+  <rect y="600" width="800" height="200" fill="#c4e2d6" />
+  <rect y="596" width="800" height="8" fill="#a9d3c3" />
+
+  <!-- Botiquín -->
+  <g transform="translate(-450 30)">
+    <rect x="540" y="190" width="170" height="200" rx="16" fill="#fff" stroke="#01215b" stroke-width="8" />
+    <path d="M610 245h30v35h35v30h-35v35h-30v-35h-35v-30h35z" fill="#3f8f7a" />
+  </g>
+
+  <!-- Estetoscopio colgado -->
+  <g transform="translate(-730 0)">
+    <circle cx="1380" cy="180" r="10" fill="#01215b" />
+    <path d="M1350 190c0 90 20 130 30 130s30-40 30-130" stroke="#01215b" stroke-width="8" fill="none" stroke-linecap="round" />
+    <path d="M1380 320v60" stroke="#01215b" stroke-width="8" stroke-linecap="round" />
+    <circle cx="1380" cy="395" r="20" fill="#f5d372" stroke="#01215b" stroke-width="8" />
+  </g>
+
+  <g transform="translate(-650 0)">
+    <!-- Mesa -->
+    <rect x="790" y="560" width="520" height="30" rx="15" fill="#01215b" />
+    <rect x="850" y="590" width="26" height="150" fill="#01215b" />
+    <rect x="1224" y="590" width="26" height="150" fill="#01215b" />
+
+    <!-- Perro -->
+    <path d="M1150 520c70-10 90-80 60-110" stroke="#c98e50" stroke-width="26" fill="none" stroke-linecap="round" />
+    <ellipse cx="1050" cy="478" rx="112" ry="92" fill="#e0a868" />
+    <ellipse cx="1050" cy="500" rx="60" ry="62" fill="#f6e3c8" />
+    <rect x="998" y="490" width="36" height="72" rx="18" fill="#e0a868" />
+    <rect x="1066" y="490" width="36" height="72" rx="18" fill="#e0a868" />
+    <circle cx="1050" cy="335" r="90" fill="#e0a868" />
+    <ellipse cx="972" cy="330" rx="30" ry="64" fill="#9c6a3c" transform="rotate(22 972 330)" />
+    <ellipse cx="1128" cy="330" rx="30" ry="64" fill="#9c6a3c" transform="rotate(-22 1128 330)" />
+    <ellipse cx="1050" cy="372" rx="50" ry="38" fill="#f6e3c8" />
+    <ellipse cx="1050" cy="354" rx="17" ry="12" fill="#01215b" />
+    <path d="M1050 366v14m-18 4c10 10 26 10 36 0" stroke="#01215b" stroke-width="5" fill="none" stroke-linecap="round" />
+    <circle cx="1016" cy="318" r="10" fill="#01215b" />
+    <circle cx="1084" cy="318" r="10" fill="#01215b" />
+    <rect x="988" y="414" width="124" height="20" rx="10" fill="#3f8f7a" />
+    <circle cx="1050" cy="446" r="13" fill="#f5d372" />
+
+    <!-- Corazón -->
+    <path d="M1190 240c-26-17-36-30-36-42 0-11 8-18 17-18 8 0 14 4 19 11 5-7 11-11 19-11 9 0 17 7 17 18 0 12-10 25-36 42z" fill="#f4a9a0" />
+  </g>
+</svg>
