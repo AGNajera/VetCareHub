@@ -1,15 +1,20 @@
 ---
+// Importados como componentes para que el SVG quede inline y el CSS pueda animar sus partes
+import Consulta from "../assets/consulta.svg";
+import Vacunacion from "../assets/vacunacion.svg";
+import Clinica from "../assets/clinica.svg";
+
 const images = [
   {
-    src: "/images/consulta.svg",
+    Svg: Consulta,
     alt: "Perro sentado en la mesa de revisión del consultorio",
   },
   {
-    src: "/images/vacunacion.svg",
+    Svg: Vacunacion,
     alt: "Gato con una curita junto a su cartilla de vacunación",
   },
   {
-    src: "/images/clinica.svg",
+    Svg: Clinica,
     alt: "Fachada de la clínica VetCareHub con un perrito paseando",
   },
 ];
@@ -22,11 +27,12 @@ const images = [
 >
   <div class="images">
     {
-      images.map((image, i) => (
-        <img
+      images.map(({ Svg, alt }, i) => (
+        <Svg
           class:list={["image", { "is-active": i === 0 }]}
-          src={image.src}
-          alt={image.alt}
+          role="img"
+          aria-label={alt}
+          aria-hidden={i === 0 ? "false" : "true"}
         />
       ))
     }
@@ -60,7 +66,7 @@ const images = [
 <script>
   const carrusel = document.querySelector<HTMLElement>(".carrusel");
   if (carrusel) {
-    const images = [...carrusel.querySelectorAll<HTMLImageElement>(".image")];
+    const images = [...carrusel.querySelectorAll<SVGSVGElement>(".image")];
     const dots = [...document.querySelectorAll<HTMLButtonElement>(".dot")];
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -74,6 +80,8 @@ const images = [
         image.classList.toggle("is-active", i === current);
         image.setAttribute("aria-hidden", String(i !== current));
       });
+      // Se reinicia solo en la imagen que entra, así la que sale no brinca durante el fade
+      images[current].classList.remove("recorrido");
       dots.forEach((dot, i) =>
         dot.setAttribute("aria-current", String(i === current)),
       );
@@ -102,6 +110,14 @@ const images = [
         start();
       }),
     );
+
+    // El recorrido (el perrito caminando a la puerta) se queda terminado aunque el mouse salga,
+    // hasta que se cambie de imagen
+    carrusel
+      .querySelector(".images")
+      ?.addEventListener("mouseenter", () =>
+        images[current].classList.add("recorrido"),
+      );
 
     carrusel.addEventListener("mouseenter", stop);
     carrusel.addEventListener("mouseleave", start);
@@ -142,7 +158,6 @@ const images = [
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
     opacity: 0;
     transition: opacity 700ms ease;
   }
@@ -154,6 +169,136 @@ const images = [
   @media (prefers-reduced-motion: reduce) {
     .image {
       transition: none;
+    }
+  }
+
+  /* Animaciones de las partes de cada SVG al hacer hover. Las clases vienen de los archivos en src/assets,
+     por eso se usa :global (Astro no les pone su atributo de scope). */
+  @media (prefers-reduced-motion: no-preference) {
+    .images :global(:is(.cola, .estetoscopio, .ojos, .corazon, .jeringa, .nubes, .sol, .perrito)) {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .images:hover {
+      :global(.cola) {
+        transform-origin: left bottom;
+        animation: menear 0.8s ease-in-out infinite;
+      }
+
+      :global(.estetoscopio) {
+        transform-origin: center top;
+        animation: balancear 3.2s ease-in-out infinite;
+      }
+
+      :global(.ojos) {
+        animation: parpadear 3s ease-in-out infinite;
+      }
+
+      :global(.corazon) {
+        animation: latir 0.9s ease-in-out infinite;
+      }
+
+      :global(.jeringa) {
+        animation: flotar 3.6s ease-in-out infinite;
+      }
+
+      :global(.nubes) {
+        animation: desplazar 8s ease-in-out infinite;
+      }
+
+      :global(.sol) {
+        animation: latir 2.4s ease-in-out infinite;
+      }
+    }
+
+    .recorrido :global(.perrito) {
+      animation: pasear 3s ease-in-out forwards;
+    }
+  }
+
+  /* Todas empiezan y terminan en la posición original (0%, 100%) para que al hacer hover
+     el movimiento arranque suave y no brinque directo a un extremo */
+  @keyframes menear {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -10deg;
+    }
+    75% {
+      rotate: 10deg;
+    }
+  }
+
+  @keyframes balancear {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -6deg;
+    }
+    75% {
+      rotate: 6deg;
+    }
+  }
+
+  @keyframes parpadear {
+    0%,
+    90%,
+    100% {
+      scale: 1 1;
+    }
+    95% {
+      scale: 1 0.1;
+    }
+  }
+
+  @keyframes latir {
+    0%,
+    100% {
+      scale: 1;
+    }
+    50% {
+      scale: 1.15;
+    }
+  }
+
+  @keyframes flotar {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    25% {
+      translate: 0 -8px;
+    }
+    75% {
+      translate: 0 8px;
+    }
+  }
+
+  @keyframes desplazar {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    25% {
+      translate: -20px 0;
+    }
+    75% {
+      translate: 20px 0;
+    }
+  }
+
+  @keyframes pasear {
+    from {
+      translate: 0 0;
+    }
+    to {
+      /* Hasta la puerta de la clínica */
+      translate: 330px 0;
     }
   }
 
