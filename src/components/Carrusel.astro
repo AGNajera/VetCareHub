@@ -1,0 +1,222 @@
+---
+const images = [
+  {
+    src: "/images/consulta.svg",
+    alt: "Perro sentado en la mesa de revisión del consultorio",
+  },
+  {
+    src: "/images/vacunacion.svg",
+    alt: "Gato con una curita junto a su cartilla de vacunación",
+  },
+  {
+    src: "/images/clinica.svg",
+    alt: "Fachada de la clínica VetCareHub con un perrito paseando",
+  },
+];
+---
+
+<section
+  class="carrusel"
+  aria-roledescription="carrusel"
+  aria-label="Galería de VetCareHub"
+>
+  <div class="images">
+    {
+      images.map((image, i) => (
+        <img
+          class:list={["image", { "is-active": i === 0 }]}
+          src={image.src}
+          alt={image.alt}
+        />
+      ))
+    }
+  </div>
+
+  <button class="arrow prev" type="button" aria-label="Imagen anterior">
+    <svg viewBox="0 0 24 24" aria-hidden="true"
+      ><path d="M15 6l-6 6l6 6"></path></svg
+    >
+  </button>
+  <button class="arrow next" type="button" aria-label="Imagen siguiente">
+    <svg viewBox="0 0 24 24" aria-hidden="true"
+      ><path d="M9 6l6 6l-6 6"></path></svg
+    >
+  </button>
+
+  <div class="dots">
+    {
+      images.map((_, i) => (
+        <button
+          class="dot"
+          type="button"
+          aria-label={`Ver imagen ${i + 1} de ${images.length}`}
+          aria-current={i === 0 ? "true" : "false"}
+        />
+      ))
+    }
+  </div>
+</section>
+
+<script>
+  const carrusel = document.querySelector<HTMLElement>(".carrusel");
+  if (carrusel) {
+    const images = [...carrusel.querySelectorAll<HTMLImageElement>(".image")];
+    const dots = [...document.querySelectorAll<HTMLButtonElement>(".dot")];
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    let current = 0;
+    let timer = 0;
+
+    const show = (index: number) => {
+      current = (index + images.length) % images.length;
+      images.forEach((image, i) => {
+        image.classList.toggle("is-active", i === current);
+        image.setAttribute("aria-hidden", String(i !== current));
+      });
+      dots.forEach((dot, i) =>
+        dot.setAttribute("aria-current", String(i === current)),
+      );
+    };
+
+    // Avance automático cada 6s. Cuando el mouse está en el carrusel se pausa la animación.
+    function start() {
+      if (reduceMotion) return;
+      stop();
+      timer = window.setInterval(() => show(current + 1), 6000);
+    }
+
+    const stop = () => window.clearInterval(timer);
+
+    carrusel.querySelector(".prev")?.addEventListener("click", () => {
+      show(current - 1);
+      start();
+    });
+    carrusel.querySelector(".next")?.addEventListener("click", () => {
+      show(current + 1);
+      start();
+    });
+    dots.forEach((dot, i) =>
+      dot.addEventListener("click", () => {
+        show(1);
+        start();
+      }),
+    );
+
+    carrusel.addEventListener("mouseenter", stop);
+    carrusel.addEventListener("mouseleave", start);
+    carrusel.addEventListener("focusin", stop);
+    carrusel.addEventListener("focusout", start);
+
+    start();
+  }
+</script>
+
+<style>
+  .carrusel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 40px 16px 72px;
+  }
+
+  .images {
+    position: relative;
+    width: clamp(240px, 36vw, 400px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #01215b;
+    box-shadow: 0 16px 40px -18px rgb(1 33 91 / 50%);
+  }
+
+  .image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 700ms ease;
+  }
+
+  .image.is-active {
+    opacity: 1;
+  }
+
+  .arrow {
+    position: absolute;
+    top: calc(40px + clamp(240px, 36vw, 400px) / 2);
+    translate: 0 -50%;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 2px solid #01215b;
+    border-radius: 50%;
+    background-color: rgb(255 255 255 / 80%);
+    color: #01215b;
+    cursor: pointer;
+
+    svg {
+      width: 26px;
+      height: 26px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    &:hover {
+      background-color: #01215b;
+      color: #fff;
+    }
+
+    &:focus-visible {
+      outline: 3px solid #3f8f7a;
+      outline-offset: 3px;
+    }
+  }
+
+  .prev {
+    left: clamp(8px, 6vw, 96px);
+  }
+
+  .next {
+    right: clamp(8px, 6vw, 96px);
+  }
+
+  .caption {
+    margin: 8px 0 0;
+    font-size: 1.1rem;
+  }
+
+  .dots {
+    display: flex;
+    gap: 10px;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border: 2px solid #01215b;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+
+    &[aria-current="true"] {
+      background-color: #01215b;
+    }
+
+    &:focus-visible {
+      outline: 3px solid #3f8f7a;
+      outline-offset: 2px;
+    }
+  }
+</style>
