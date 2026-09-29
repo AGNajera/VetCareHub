@@ -74,6 +74,7 @@ const images = [
     ).matches;
     let current = 0;
     let timer = 0;
+    const COUNT_IMAGES = 6000;
 
     const show = (index: number) => {
       current = (index + images.length) % images.length;
@@ -92,7 +93,7 @@ const images = [
     function start() {
       if (reduceMotion) return;
       stop();
-      timer = window.setInterval(() => show(current + 1), 6000);
+      timer = window.setInterval(() => show(current + 1), COUNT_IMAGES);
     }
 
     const stop = () => window.clearInterval(timer);
@@ -154,7 +155,11 @@ const images = [
     overflow: hidden;
     border-radius: 24px 24px 0 0;
     /* Solo la orilla de abajo se desvanece, así la imagen se funde con el fondo de la página */
-    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent);
+    mask-image: linear-gradient(
+      to bottom,
+      #000 calc(100% - var(--fade)),
+      transparent
+    );
   }
 
   .image {
@@ -179,7 +184,19 @@ const images = [
   /* Animaciones de las partes de cada SVG al hacer hover. Las clases vienen de los archivos en src/assets,
      por eso se usa :global (Astro no les pone su atributo de scope). */
   @media (prefers-reduced-motion: no-preference) {
-    .images :global(:is(.cola, .estetoscopio, .ojos, .corazon, .jeringa, .nubes, .sol, .perrito)) {
+    .images
+      :global(
+        :is(
+          .cola,
+          .estetoscopio,
+          .ojos,
+          .corazon,
+          .jeringa,
+          .nubes,
+          .sol,
+          .perrito
+        )
+      ) {
       transform-box: fill-box;
       transform-origin: center;
     }
