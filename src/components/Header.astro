@@ -1,9 +1,78 @@
+---
+import SidebarMobile from "./SidebarMobile.astro";
+import MenuIcon from "../assets/menu-2.svg";
+---
+
 <header>
+  <button
+    type="button"
+    class="menu-toggle"
+    aria-label="Abrir menú"
+    aria-expanded="false"
+    aria-controls="sidebar-mobile"
+  >
+    <MenuIcon aria-hidden="true" />
+  </button>
   <nav aria-label="Principal">
     <a href="/">Inicio</a>
     <a href="#nosotros">Nosotros</a>
   </nav>
 </header>
+
+<SidebarMobile />
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>(".menu-toggle");
+  const sidebar = document.querySelector<HTMLElement>("#sidebar-mobile");
+  const backdrop = document.querySelector<HTMLElement>("[data-sidebar-backdrop]");
+
+  if (toggle && sidebar && backdrop) {
+    const links = sidebar.querySelectorAll<HTMLAnchorElement>("a");
+    const isOpen = () => toggle.getAttribute("aria-expanded") === "true";
+
+    const setOpen = (open: boolean) => {
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
+      sidebar.toggleAttribute("data-open", open);
+      backdrop.toggleAttribute("data-open", open);
+      // inert saca los enlaces del orden de tabulación mientras está cerrado
+      sidebar.inert = !open;
+      // Evita que la página de fondo se desplace con el menú abierto
+      document.documentElement.style.overflow = open ? "hidden" : "";
+      if (open) links[0]?.focus();
+    };
+
+    toggle.addEventListener("click", () => setOpen(!isOpen()));
+    backdrop.addEventListener("click", () => setOpen(false));
+    links.forEach((link) => link.addEventListener("click", () => setOpen(false)));
+
+    document.addEventListener("keydown", (event) => {
+      if (!isOpen()) return;
+
+      if (event.key === "Escape") {
+        setOpen(false);
+        toggle.focus();
+        return;
+      }
+
+      // El foco da vueltas entre el botón de cerrar y los enlaces del sidebar
+      if (event.key !== "Tab") return;
+      const last = links[links.length - 1];
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        toggle.focus();
+      } else if (event.shiftKey && document.activeElement === toggle) {
+        event.preventDefault();
+        last.focus();
+      }
+    });
+
+    // Si la pantalla crece y el menú de escritorio vuelve a aparecer, se cierra el sidebar
+    matchMedia("(min-width: 641px)").addEventListener("change", (event) => {
+      if (event.matches) setOpen(false);
+    });
+  }
+</script>
 
 <style>
   header {
@@ -14,6 +83,58 @@
     position: sticky;
     top: 0;
     z-index: 10;
+    display: flex;
+  }
+
+  .menu-toggle {
+    display: none;
+    place-items: center;
+    width: var(--header-height);
+    height: var(--header-height);
+    padding: 0;
+    border: none;
+    border-right: var(--border);
+    background: none;
+    color: var(--color-primary);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+
+    svg {
+      width: 28px;
+      height: 28px;
+      overflow: visible;
+    }
+
+    /* Las tres líneas del ícono (el primer path es el fondo transparente de Tabler).
+       Cada una gira sobre su propio centro */
+    :global(path:nth-of-type(n + 2)) {
+      transform-box: fill-box;
+      transform-origin: center;
+      transition:
+        transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 180ms ease;
+    }
+  }
+
+  /* Hamburguesa a X: la línea de en medio se encoge y las otras dos bajan/suben
+     6px hasta el centro y giran 45° */
+  .menu-toggle[aria-expanded="true"] {
+    :global(path:nth-of-type(2)) {
+      transform: translateY(6px) rotate(45deg);
+    }
+
+    :global(path:nth-of-type(3)) {
+      transform: scaleX(0);
+      opacity: 0;
+    }
+
+    :global(path:nth-of-type(4)) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
   }
 
   nav {
@@ -48,10 +169,20 @@
     }
   }
 
-  @media (max-width: 480px) {
-    nav a {
-      padding: 12px 14px;
-      font-size: 1rem;
+  /* En celular el menú de escritorio se cambia por la hamburguesa y el sidebar */
+  @media (max-width: 640px) {
+    .menu-toggle {
+      display: grid;
+    }
+
+    nav {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu-toggle :global(path) {
+      transition: none;
     }
   }
 </style>
