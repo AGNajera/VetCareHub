@@ -27,7 +27,7 @@
 
   <!-- Jeringa -->
   <g class="jeringa">
-    <g transform="translate(-750 -20) rotate(-30 1380 330)">
+    <g transform="translate(-755 20) rotate(-30 1380 330)">
       <rect x="1300" y="310" width="170" height="44" rx="10" fill="#fff" stroke="#01215b" stroke-width="7" />
       <rect x="1310" y="318" width="90" height="28" rx="6" fill="#9fd3c1" />
       <rect x="1470" y="322" width="40" height="20" fill="#01215b" />
@@ -38,7 +38,7 @@
 
   <g transform="translate(-620 0)">
     <!-- Gato -->
-    <path class="cola" d="M1170 590c90 0 120-60 90-120-20-40-60-30-50 0" stroke="#7d8ba3" stroke-width="28" fill="none" stroke-linecap="round" />
+    <path class="cola" d="M1120 590h50c90 0 120-60 90-120-20-40-60-30-50 0" stroke="#7d8ba3" stroke-width="28" fill="none" stroke-linecap="round" />
     <path d="M960 600c-10-120 20-200 90-200s100 80 90 200z" fill="#9aa7bd" />
     <ellipse cx="1050" cy="520" rx="46" ry="70" fill="#e9edf4" />
     <rect x="1000" y="540" width="36" height="66" rx="18" fill="#9aa7bd" />
