@@ -1,0 +1,122 @@
+---
+import Logo from "../assets/logo.svg";
+---
+
+<div class="sidebar-backdrop" data-sidebar-backdrop></div>
+
+<aside id="sidebar-mobile" class="sidebar" aria-label="Menú" inert>
+  <nav>
+    <a href="#inicio">Inicio</a>
+    <a href="#servicios">Nosotros</a>
+    <a href="#contacto">Contacto</a>
+    <a href="#contacto">Cita</a>
+    <a href="#contacto">Ayuda</a>
+  </nav>
+
+  <a href="#inicio" class="sidebar-brand">
+    <Logo class="sidebar-logo" aria-hidden="true" />
+    <span>VetCareHub</span>
+  </a>
+</aside>
+
+<style>
+  /* Queda debajo del header (z-index 10) para que el botón siga visible y
+     funcione como la X de cerrar */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    width: min(85vw, 320px);
+    height: 100dvh;
+    padding-top: calc(var(--header-height) + 2px);
+    background-color: var(--color-surface);
+    border-right: var(--border);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 280ms;
+  }
+
+  .sidebar[data-open] {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s;
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+
+    a {
+      padding: 18px 24px;
+      border-bottom: var(--border);
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 1.5rem;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: -3px;
+      }
+    }
+  }
+
+  /* Logo hasta abajo: margin-top auto lo empuja al final del sidebar */
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: auto;
+    padding: 24px;
+    border-top: var(--border);
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    font-size: 1.35rem;
+    text-decoration: none;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+  }
+
+  .sidebar-logo {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 8;
+    background-color: var(--color-shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 280ms ease;
+  }
+
+  .sidebar-backdrop[data-open] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .sidebar[data-open],
+    .sidebar-backdrop {
+      transition: none;
+    }
+  }
+</style>
