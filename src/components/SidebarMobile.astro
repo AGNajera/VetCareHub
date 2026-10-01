@@ -29,7 +29,7 @@ import Logo from "../assets/logo.svg";
     z-index: 9;
     display: flex;
     flex-direction: column;
-    width: min(85vw, 320px);
+    width: min(92vw, 420px);
     height: 100dvh;
     padding-top: calc(var(--header-height) + 2px);
     background-color: var(--color-surface);
@@ -101,7 +101,8 @@ import Logo from "../assets/logo.svg";
     position: fixed;
     inset: 0;
     z-index: 8;
-    background-color: var(--color-shadow);
+    /* Solo desenfoca la página de atrás, sin oscurecerla */
+    backdrop-filter: blur(6px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 280ms ease;
