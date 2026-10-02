@@ -54,17 +54,15 @@ const servicios = [
   </p>
 
   <ul class="servicios">
-    {
-      servicios.map(({ Icono, titulo, texto }) => (
-        <li>
-          <span class="icono">
-            <Icono aria-hidden="true" />
-          </span>
-          <h3>{titulo}</h3>
-          <p>{texto}</p>
-        </li>
-      ))
-    }
+    {servicios.map(({ Icono, titulo, texto }) => (
+      <li>
+        <span class="icono">
+          <Icono aria-hidden="true" />
+        </span>
+        <h3>{titulo}</h3>
+        <p>{texto}</p>
+      </li>
+    ))}
   </ul>
 </section>
 
@@ -82,6 +80,12 @@ const servicios = [
     border-radius: 14px;
     overflow: hidden;
     background-color: var(--color-primary);
+
+    h2 {
+      margin: 0 16px;
+      font-family: var(--font-bold);
+      font-size: 1.8rem;
+    }
 
     li {
       padding: 24px;
