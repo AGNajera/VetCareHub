@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 100 1200 600">
   <!-- Fachada de la clínica en Tlaltenango -->
-  <rect width="800" height="800" fill="#e3f1f5" />
+  <rect x="-311" width="1422" height="800" fill="#e3f1f5" />
   <circle class="sol" cx="230" cy="220" r="60" fill="#f5d372" />
   <g class="nubes" fill="#fff">
     <ellipse cx="520" cy="170" rx="80" ry="30" />
@@ -8,8 +8,8 @@
   </g>
 
   <!-- Banqueta -->
-  <rect y="620" width="800" height="180" fill="#c4e2d6" />
-  <rect y="610" width="800" height="20" fill="#01215b" opacity=".15" />
+  <rect x="-311" y="620" width="1422" height="180" fill="#c4e2d6" />
+  <rect x="-311" y="610" width="1422" height="20" fill="#01215b" opacity=".15" />
 
   <!-- Edificio -->
   <g transform="translate(-450 124) scale(.8)">
