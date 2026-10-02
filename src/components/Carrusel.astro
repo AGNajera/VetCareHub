@@ -8,14 +8,22 @@ const images = [
   {
     Svg: Consulta,
     alt: "Perro sentado en la mesa de revisión del consultorio",
+    titulo: "Consulta general",
+    texto:
+      "Lo revisamos de nariz a cola y te damos su plan de cuidados por escrito.",
   },
   {
     Svg: Vacunacion,
     alt: "Gato con una curita junto a su cartilla de vacunación",
+    titulo: "Vacunación",
+    texto:
+      "Anotamos cada dosis en su cartilla y te avisamos cuando toca la siguiente.",
   },
   {
     Svg: Clinica,
     alt: "Fachada de la clínica VetCareHub con un perrito paseando",
+    titulo: "Nuestra clínica",
+    texto: "Av. Emiliano Zapata 123, Tlaltenango, Cuernavaca.",
   },
 ];
 ---
@@ -26,41 +34,51 @@ const images = [
   aria-label="Galería de VetCareHub"
 >
   <div class="images">
-    {
-      images.map(({ Svg, alt }, i) => (
-        <Svg
-          class:list={["image", { "is-active": i === 0 }]}
-          role="img"
-          preserveAspectRatio="xMidYMid slice"
-          aria-label={alt}
-          aria-hidden={i === 0 ? "false" : "true"}
-        />
-      ))
-    }
+    {images.map(({ Svg, alt }, i) => (
+      <Svg
+        class:list={["image", { "is-active": i === 0 }]}
+        role="img"
+        preserveAspectRatio="xMidYMid slice"
+        aria-label={alt}
+        aria-hidden={i === 0 ? "false" : "true"}
+      />
+    ))}
   </div>
 
-  <button class="arrow prev" type="button" aria-label="Imagen anterior">
-    <svg viewBox="0 0 24 24" aria-hidden="true"
-      ><path d="M15 6l-6 6l6 6"></path></svg
-    >
-  </button>
-  <button class="arrow next" type="button" aria-label="Imagen siguiente">
-    <svg viewBox="0 0 24 24" aria-hidden="true"
-      ><path d="M9 6l6 6l-6 6"></path></svg
-    >
-  </button>
+  <!-- Todas las descripciones ocupan la misma celda del grid, así el alto no brinca
+       cuando cambia el texto -->
+  <div class="captions">
+    {images.map(({ titulo, texto }, i) => (
+      <p class:list={["caption", { "is-active": i === 0 }]}>
+        <strong>{titulo}</strong>
+        {texto}
+      </p>
+    ))}
+  </div>
 
-  <div class="dots">
-    {
-      images.map((_, i) => (
+  <!-- En escritorio las flechas van a los lados de la imagen; en celular se acomodan
+       en la misma fila que los puntos -->
+  <div class="controls">
+    <button class="arrow prev" type="button" aria-label="Imagen anterior">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6l-6 6l6 6"></path>
+      </svg>
+    </button>
+    <div class="dots">
+      {images.map((_, i) => (
         <button
           class="dot"
           type="button"
           aria-label={`Ver imagen ${i + 1} de ${images.length}`}
           aria-current={i === 0 ? "true" : "false"}
         />
-      ))
-    }
+      ))}
+    </div>
+    <button class="arrow next" type="button" aria-label="Imagen siguiente">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 6l6 6l-6 6"></path>
+      </svg>
+    </button>
   </div>
 </section>
 
@@ -68,6 +86,9 @@ const images = [
   const carrusel = document.querySelector<HTMLElement>(".carrusel");
   if (carrusel) {
     const images = [...carrusel.querySelectorAll<SVGSVGElement>(".image")];
+    const captions = [
+      ...carrusel.querySelectorAll<HTMLParagraphElement>(".caption"),
+    ];
     const dots = [...document.querySelectorAll<HTMLButtonElement>(".dot")];
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -82,6 +103,9 @@ const images = [
         image.classList.toggle("is-active", i === current);
         image.setAttribute("aria-hidden", String(i !== current));
       });
+      captions.forEach((caption, i) =>
+        caption.classList.toggle("is-active", i === current),
+      );
       // Se reinicia solo en la imagen que entra, así la que sale no brinca durante el fade
       images[current].classList.remove("recorrido");
       dots.forEach((dot, i) =>
@@ -133,11 +157,12 @@ const images = [
 <style>
   .carrusel {
     /* Tamaño de las imágenes; las flechas usan el alto para centrarse verticalmente */
-    --images-width: clamp(300px, 56vw, 620px);
-    --images-height: calc(var(--images-width) * 3 / 4);
+    /* Panorámico (2:1, igual que el viewBox de los SVG). Se dejan 130px por lado para las flechas */
+    --images-width: clamp(300px, 100vw - 260px, 1100px);
+    --images-height: calc(var(--images-width) / 2);
     /* Qué tanto de la parte de abajo se difumina hacia el fondo de la página */
     --fade: 30%;
-    --padding-top: 40px;
+    --padding-top: 22px;
 
     position: relative;
     display: flex;
@@ -367,14 +392,72 @@ const images = [
     right: clamp(8px, 6vw, 96px);
   }
 
+  .captions {
+    display: grid;
+    width: var(--images-width);
+    max-width: 100%;
+  }
+
   .caption {
-    margin: 8px 0 0;
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
     font-size: 1.1rem;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 700ms ease,
+      visibility 0s linear 700ms;
+
+    strong {
+      font-family: var(--font-bold);
+      font-size: 1.3rem;
+      font-weight: normal;
+    }
+
+    &.is-active {
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 700ms ease,
+        visibility 0s;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caption,
+    .caption.is-active {
+      transition: none;
+    }
   }
 
   .dots {
     display: flex;
     gap: 10px;
+  }
+
+  /* En celular la imagen ocupa todo el ancho (menos el padding) y las flechas dejan de
+     encimarse: bajan a la fila de los puntos, una de cada lado. Se regresa a 4:3 porque en
+     2:1 quedaría muy bajita; el slice recorta solo el fondo de los lados */
+  @media (max-width: 640px) {
+    .carrusel {
+      --images-width: calc(100vw - 32px);
+      --images-height: calc(var(--images-width) * 3 / 4);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .arrow {
+      position: static;
+      translate: none;
+    }
   }
 
   .dot {
