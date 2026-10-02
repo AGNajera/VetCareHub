@@ -1,6 +1,7 @@
 ---
 import SidebarMobile from "./SidebarMobile.astro";
 import MenuIcon from "../assets/menu-2.svg";
+import Logo from "../assets/logo.svg";
 ---
 
 <header>
@@ -15,8 +16,12 @@ import MenuIcon from "../assets/menu-2.svg";
   </button>
   <nav aria-label="Principal">
     <a href="/">Inicio</a>
-    <a href="#nosotros">Nosotros</a>
+    <a href="/nosotros">Nosotros</a>
   </nav>
+  <a href="/" class="brand-mobile">VetCareHub</a>
+  <div class="logo-mobile">
+    <Logo aria-hidden="true" />
+  </div>
 </header>
 
 <SidebarMobile />
@@ -24,7 +29,9 @@ import MenuIcon from "../assets/menu-2.svg";
 <script>
   const toggle = document.querySelector<HTMLButtonElement>(".menu-toggle");
   const sidebar = document.querySelector<HTMLElement>("#sidebar-mobile");
-  const backdrop = document.querySelector<HTMLElement>("[data-sidebar-backdrop]");
+  const backdrop = document.querySelector<HTMLElement>(
+    "[data-sidebar-backdrop]",
+  );
 
   if (toggle && sidebar && backdrop) {
     const links = sidebar.querySelectorAll<HTMLAnchorElement>("a");
@@ -44,7 +51,9 @@ import MenuIcon from "../assets/menu-2.svg";
 
     toggle.addEventListener("click", () => setOpen(!isOpen()));
     backdrop.addEventListener("click", () => setOpen(false));
-    links.forEach((link) => link.addEventListener("click", () => setOpen(false)));
+    links.forEach((link) =>
+      link.addEventListener("click", () => setOpen(false)),
+    );
 
     document.addEventListener("keydown", (event) => {
       if (!isOpen()) return;
@@ -169,10 +178,50 @@ import MenuIcon from "../assets/menu-2.svg";
     }
   }
 
-  /* En celular el menú de escritorio se cambia por la hamburguesa y el sidebar */
+  .brand-mobile,
+  .logo-mobile {
+    display: none;
+  }
+
+  .brand-mobile {
+    align-self: center;
+    justify-self: center;
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    font-size: 1.5rem;
+    text-decoration: none;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+  }
+
+  .logo-mobile {
+    place-items: center;
+    border-left: var(--border);
+
+    svg {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  /* En celular el menú de escritorio se cambia por la hamburguesa y el sidebar.
+     Las columnas de los lados miden lo mismo para que el nombre quede centrado */
   @media (max-width: 640px) {
-    .menu-toggle {
+    header {
       display: grid;
+      grid-template-columns: var(--header-height) 1fr var(--header-height);
+    }
+
+    .menu-toggle,
+    .logo-mobile {
+      display: grid;
+    }
+
+    .brand-mobile {
+      display: block;
     }
 
     nav {

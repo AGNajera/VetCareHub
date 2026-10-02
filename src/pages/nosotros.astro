@@ -1,0 +1,57 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Consulta from "../assets/consulta.svg";
+---
+
+<Layout>
+  <div class="page">
+    <Header />
+    <main>
+      <div class="img-nosotros">
+        <Consulta
+          class="img-nosotros"
+          role="img"
+          preserveAspectRatio="xMidYMid slice"
+          aria-label="Perro sentado en la mesa de revisión del consultorio"
+        />
+      </div>
+      <article>
+        <h1>VetCareHub</h1>
+      </article>
+    </main>
+    <Footer />
+  </div>
+</Layout>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+
+    font-family: var(--font-body);
+  }
+
+  main {
+    min-width: 20dvh;
+  }
+
+  .img-nosotros {
+    width: 100%;
+    height: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  h1 {
+    font-family: var(--font-bold);
+    font-size: 2.25rem;
+    text-align: center;
+  }
+</style>
