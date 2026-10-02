@@ -54,27 +54,21 @@ const servicios = [
   </p>
 
   <ul class="servicios">
-    {servicios.map(({ Icono, titulo, texto }) => (
-      <li>
-        <span class="icono">
-          <Icono aria-hidden="true" />
-        </span>
-        <h3>{titulo}</h3>
-        <p>{texto}</p>
-      </li>
-    ))}
+    {
+      servicios.map(({ Icono, titulo, texto }) => (
+        <li>
+          <span class="icono">
+            <Icono aria-hidden="true" />
+          </span>
+          <h3>{titulo}</h3>
+          <p>{texto}</p>
+        </li>
+      ))
+    }
   </ul>
 </section>
 
 <style>
-  /* El h2 está fuera de la lista, por eso no va dentro de .servicios. Con .section le gana
-     al h2 global de .section del layout */
-  .section h2 {
-    margin: 0 16px;
-    font-family: var(--font-bold);
-    font-size: 1.8rem;
-  }
-
   /* El fondo marino asoma por el gap de 2px y hace de borde compartido entre celdas,
      igual que los separadores del menú */
   .servicios {
