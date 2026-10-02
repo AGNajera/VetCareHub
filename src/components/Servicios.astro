@@ -67,6 +67,14 @@ const servicios = [
 </section>
 
 <style>
+  /* El h2 está fuera de la lista, por eso no va dentro de .servicios. Con .section le gana
+     al h2 global de .section del layout */
+  .section h2 {
+    margin: 0 16px;
+    font-family: var(--font-bold);
+    font-size: 1.8rem;
+  }
+
   /* El fondo marino asoma por el gap de 2px y hace de borde compartido entre celdas,
      igual que los separadores del menú */
   .servicios {
@@ -80,12 +88,6 @@ const servicios = [
     border-radius: 14px;
     overflow: hidden;
     background-color: var(--color-primary);
-
-    h2 {
-      margin: 0 16px;
-      font-family: var(--font-bold);
-      font-size: 1.8rem;
-    }
 
     li {
       padding: 24px;
