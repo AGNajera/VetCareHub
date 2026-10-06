@@ -1,19 +1,33 @@
 ---
 import Logo from "../assets/logo.svg";
+
+// Inicio y Nosotros son páginas; los demás van al footer, que está en las dos.
+// Las rutas llevan / al principio para que también funcionen desde /nosotros
+const enlaces = [
+  { href: "/#inicio", texto: "Inicio", ruta: "/" },
+  { href: "/nosotros", texto: "Nosotros", ruta: "/nosotros" },
+  { href: "#contacto", texto: "Contacto" },
+  { href: "#contacto", texto: "Cita" },
+  { href: "#contacto", texto: "Ayuda" },
+];
+
+const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
 
 <div class="sidebar-backdrop" data-sidebar-backdrop></div>
 
 <aside id="sidebar-mobile" class="sidebar" aria-label="Menú" inert>
   <nav>
-    <a href="#inicio">Inicio</a>
-    <a href="#servicios">Nosotros</a>
-    <a href="#contacto">Contacto</a>
-    <a href="#contacto">Cita</a>
-    <a href="#contacto">Ayuda</a>
+    {
+      enlaces.map(({ href, texto, ruta }) => (
+        <a href={href} aria-current={ruta === actual ? "page" : undefined}>
+          {texto}
+        </a>
+      ))
+    }
   </nav>
 
-  <a href="#inicio" class="sidebar-brand">
+  <a href="/#inicio" class="sidebar-brand">
     <Logo class="sidebar-logo" aria-hidden="true" />
     <span>VetCareHub</span>
   </a>
@@ -68,6 +82,12 @@ import Logo from "../assets/logo.svg";
       &:focus-visible {
         outline: var(--focus-ring);
         outline-offset: -3px;
+      }
+
+      /* Mismo marcador de página actual que el menú de escritorio */
+      &[aria-current="page"] {
+        background-color: var(--color-primary);
+        color: var(--color-white);
       }
     }
   }

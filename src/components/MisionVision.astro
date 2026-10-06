@@ -1,0 +1,381 @@
+---
+// Se importa el SVG para usar su URL como la imagen que se ve antes de que cargue el video
+import Mascota from "../assets/mascota.svg";
+
+const valores = [
+  {
+    nombre: "Honestidad",
+    texto: "Recomendamos solo lo que tu mascota necesita.",
+  },
+  {
+    nombre: "Paciencia",
+    texto: "Cada animal va a su ritmo, sin prisas en la mesa.",
+  },
+  {
+    nombre: "Claridad",
+    texto: "Diagnóstico y costos por escrito antes de empezar.",
+  },
+  {
+    nombre: "Seguimiento",
+    texto: "Te escribimos después de la consulta para saber cómo sigue.",
+  },
+];
+---
+
+<section class="section mision-vision" aria-label="Misión, visión y valores">
+  <div class="panel">
+    <article class="mision">
+      <h2>Misión</h2>
+      <p>
+        Cuidar la salud de los perros y gatos de Cuernavaca con medicina
+        honesta: diagnósticos claros, tratamientos que sí hacen falta y precios
+        que conoces desde el principio.
+      </p>
+    </article>
+
+    <div class="mascota">
+      <!-- Sin autoplay: el script lo reproduce solo mientras está en pantalla, y con
+           preload="none" no se descarga antes; mientras tanto se ve el póster -->
+      <video
+        src="/mascota.mp4"
+        poster={Mascota.src}
+        width="480"
+        height="480"
+        preload="none"
+        muted
+        loop
+        playsinline
+        aria-label="Canela, la mascota de la clínica, moviendo la cola"></video>
+      <button
+        type="button"
+        class="pausa"
+        aria-label="Reproducir video"
+        data-pausado
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path class="icono-pausa" d="M9 6v12M15 6v12"></path>
+          <path class="icono-play" d="M8 6v12l10-6z"></path>
+        </svg>
+      </button>
+    </div>
+
+    <article class="vision">
+      <h2>Visión</h2>
+      <p>
+        Ser la clínica a la que las familias de Tlaltenango llegan primero,
+        porque ahí conocen a su mascota por nombre y la han visto crecer.
+      </p>
+    </article>
+
+    <div class="valores">
+      <h2>Valores</h2>
+      <ul>
+        {
+          valores.map(({ nombre, texto }) => (
+            <li>
+              <h3>{nombre}</h3>
+              <p>{texto}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  const video = document.querySelector<HTMLVideoElement>(".mascota video");
+  const pausa = document.querySelector<HTMLButtonElement>(".mascota .pausa");
+
+  if (video && pausa) {
+    const actualizar = () => {
+      pausa.toggleAttribute("data-pausado", video.paused);
+      pausa.setAttribute(
+        "aria-label",
+        video.paused ? "Reproducir video" : "Pausar video",
+      );
+    };
+
+    // Si lo pausó la persona no se vuelve a reproducir solo al regresar a la pantalla.
+    // Con movimiento reducido empieza así, detenido, hasta que se use el botón
+    let pausadoPorUsuario = matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    // play() regresa una promesa que se rechaza si el navegador no deja reproducir
+    // (por ejemplo, un iPhone en modo de bajo consumo); el botón se queda en "Reproducir"
+    const reproducir = () => video.play().catch(() => {});
+
+    pausa.addEventListener("click", () => {
+      pausadoPorUsuario = !video.paused;
+      if (video.paused) reproducir();
+      else video.pause();
+    });
+    video.addEventListener("play", actualizar);
+    video.addEventListener("pause", actualizar);
+
+    // Solo se reproduce mientras al menos la mitad del círculo está en pantalla.
+    // El umbral 0 avisa cuando sale por completo, por si se reprodujo con el botón
+    // estando a menos de la mitad
+    new IntersectionObserver(
+      (entradas) => {
+        // Si se juntaron varios avisos, el último es el estado actual
+        const visible = entradas[entradas.length - 1].intersectionRatio >= 0.5;
+        if (!visible) video.pause();
+        else if (!pausadoPorUsuario) reproducir();
+      },
+      { threshold: [0, 0.5] },
+    ).observe(video);
+
+    actualizar();
+  }
+</script>
+
+<style>
+  .mision-vision {
+    padding-block: 16px;
+  }
+
+  /* La mascota va al centro y de ella salen tres líneas: a la misión, a la visión y a los valores */
+  .panel {
+    --mascota: clamp(200px, 25vw, 270px);
+    --rayo: 44px;
+
+    display: grid;
+    grid-template-columns: 1fr var(--mascota) 1fr;
+    grid-template-areas:
+      "mision mascota vision"
+      "valores valores valores";
+    align-items: center;
+    gap: var(--rayo);
+    padding: 44px 40px 40px;
+    border: var(--border);
+    border-radius: 24px;
+    background-color: var(--color-white);
+
+    p {
+      margin: 0;
+      line-height: 1.55;
+    }
+  }
+
+  /* El padding del lado de la mascota deja aire entre el texto y el punto de la línea */
+  .mision {
+    grid-area: mision;
+    padding-right: 14px;
+  }
+
+  .vision {
+    grid-area: vision;
+    padding-left: 14px;
+  }
+
+  .mision p,
+  .vision p {
+    font-size: 1.1rem;
+  }
+
+  /* Pegada abajo de su fila para que la línea que baja a los valores siempre mida lo mismo */
+  .mascota {
+    position: relative;
+    grid-area: mascota;
+    align-self: end;
+    width: var(--mascota);
+    aspect-ratio: 1;
+
+    video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: var(--border);
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: var(--color-mint);
+    }
+
+    /* Cada línea es un degradado de 2px y termina en un punto del lado del texto */
+    &::before,
+    &::after {
+      --punto: radial-gradient(
+        circle,
+        var(--color-primary) 4.5px,
+        transparent 5px
+      );
+      --linea: linear-gradient(var(--color-primary), var(--color-primary));
+
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: var(--rayo);
+      height: 10px;
+      translate: 0 -50%;
+    }
+
+    &::before {
+      right: 100%;
+      background:
+        var(--punto) left / 10px 10px no-repeat,
+        var(--linea) center / 100% 2px no-repeat;
+    }
+
+    &::after {
+      left: 100%;
+      background:
+        var(--punto) right / 10px 10px no-repeat,
+        var(--linea) center / 100% 2px no-repeat;
+    }
+  }
+
+  /* El botón va sobre la orilla del círculo, a 45°: (1 - cos 45°) / 2 = 14.6% */
+  .pausa {
+    position: absolute;
+    right: calc(14.6% - 22px);
+    bottom: calc(14.6% - 22px);
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: var(--border);
+    border-radius: 50%;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    cursor: pointer;
+
+    svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icono-play {
+      display: none;
+      fill: currentColor;
+    }
+
+    &[data-pausado] {
+      .icono-pausa {
+        display: none;
+      }
+
+      .icono-play {
+        display: inline;
+      }
+    }
+
+    &:hover {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+  }
+
+  .valores {
+    position: relative;
+    grid-area: valores;
+    text-align: center;
+
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      width: 10px;
+      height: var(--rayo);
+      translate: -50% 0;
+      background:
+        radial-gradient(circle, var(--color-primary) 4.5px, transparent 5px)
+          bottom / 10px 10px no-repeat,
+        linear-gradient(var(--color-primary), var(--color-primary)) center /
+          2px 100% no-repeat;
+    }
+
+    h2 {
+      margin: 12px 0 18px;
+    }
+
+    ul {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    h3 {
+      margin: 0 0 4px;
+      font-family: var(--font-bold);
+      font-size: 1.2rem;
+    }
+  }
+
+  /* Ya no caben tres columnas: la mascota sube y las líneas se quitan */
+  @media (max-width: 860px) {
+    .panel {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "mascota mascota"
+        "mision vision"
+        "valores valores";
+      align-items: start;
+      gap: 28px 32px;
+      padding: 28px 24px;
+    }
+
+    .mision,
+    .vision {
+      padding-inline: 0;
+    }
+
+    .mascota {
+      justify-self: center;
+
+      &::before,
+      &::after {
+        content: none;
+      }
+    }
+
+    .valores {
+      text-align: left;
+
+      &::before {
+        content: none;
+      }
+
+      h2 {
+        margin-top: 0;
+      }
+
+      ul {
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 32px;
+      }
+    }
+  }
+
+  @media (max-width: 640px) {
+    .panel {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "mascota"
+        "mision"
+        "vision"
+        "valores";
+      padding: 24px 20px;
+    }
+
+    .valores ul {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
