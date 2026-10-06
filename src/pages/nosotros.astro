@@ -1,25 +1,19 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.astro";
+import QuienesSomos from "../components/QuienesSomos.astro";
+import MisionVision from "../components/MisionVision.astro";
+import Historia from "../components/Historia.astro";
 import Footer from "../components/Footer.astro";
-import Consulta from "../assets/consulta.svg";
 ---
 
-<Layout>
+<Layout titulo="Nosotros">
   <div class="page">
     <Header />
     <main>
-      <div class="img-nosotros">
-        <Consulta
-          class="img-nosotros"
-          role="img"
-          preserveAspectRatio="xMidYMid slice"
-          aria-label="Perro sentado en la mesa de revisión del consultorio"
-        />
-      </div>
-      <article>
-        <h1>VetCareHub</h1>
-      </article>
+      <QuienesSomos />
+      <MisionVision />
+      <Historia />
     </main>
     <Footer />
   </div>
@@ -38,20 +32,6 @@ import Consulta from "../assets/consulta.svg";
   }
 
   main {
-    min-width: 20dvh;
-  }
-
-  .img-nosotros {
     width: 100%;
-    height: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  h1 {
-    font-family: var(--font-bold);
-    font-size: 2.25rem;
-    text-align: center;
   }
 </style>

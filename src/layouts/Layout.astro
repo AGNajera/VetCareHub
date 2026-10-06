@@ -1,10 +1,31 @@
+---
+// Cada página puede pasar su título para que la pestaña diga en cuál estás
+const { titulo } = Astro.props;
+---
+
 <!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>VetCareHub</title>
+    <!-- Las fuentes se piden desde el principio para que el texto no brinque cuando llegan.
+         crossorigin es obligatorio en fuentes, sin él el navegador las descarga dos veces -->
+    <link
+      rel="preload"
+      href="/SimplySans-Book.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/SimplySans-Bold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>{titulo ? `${titulo} | VetCareHub` : "VetCareHub"}</title>
   </head>
   <body>
     <slot />

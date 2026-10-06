@@ -1,0 +1,120 @@
+---
+import Logo from "../assets/logo.svg";
+---
+
+<section class="section quienes">
+  <!-- Marco menta por fuera y placa blanca por dentro, como las dos cajas del boceto -->
+  <div class="marco">
+    <div class="placa">
+      <p class="marca">
+        <Logo aria-hidden="true" />
+        VetCareHub
+      </p>
+      <div class="respuesta">
+        <h1>¿Quiénes somos?</h1>
+        <p>
+          Somos una clínica veterinaria de barrio en Tlaltenango, Cuernavaca.
+          Desde 2012 atendemos perros y gatos con consulta, vacunas, cirugía,
+          laboratorio y estética en un mismo lugar.
+        </p>
+        <p>
+          Aquí te explicamos qué tiene tu mascota, qué opciones hay y cuánto
+          cuesta cada una antes de empezar. Tú decides con toda la información
+          en la mano.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .quienes {
+    padding-block: 32px 16px;
+  }
+
+  .marco {
+    padding: clamp(10px, 2.2vw, 22px);
+    border: var(--border);
+    border-radius: 24px;
+    background-color: var(--color-mint);
+  }
+
+  /* La línea marina entre el logo y el texto es la misma que separa los enlaces del menú */
+  .placa {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    border: var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: var(--color-white);
+  }
+
+  .marca {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    padding: 32px 44px;
+    border-right: var(--border);
+    font-family: var(--font-bold);
+    font-size: 2.1rem;
+
+    svg {
+      width: 132px;
+      height: 132px;
+    }
+  }
+
+  .respuesta {
+    align-self: center;
+    padding: 36px 44px;
+
+    h1 {
+      margin: 0 0 14px;
+      font-family: var(--font-bold);
+      font-size: 2.1rem;
+    }
+
+    p {
+      max-width: 58ch;
+      margin: 0;
+      font-size: 1.15rem;
+      line-height: 1.55;
+    }
+
+    p + p {
+      margin-top: 12px;
+    }
+  }
+
+  /* En celular el logo y el nombre pasan arriba, en una sola fila */
+  @media (max-width: 720px) {
+    .placa {
+      grid-template-columns: 1fr;
+    }
+
+    .marca {
+      flex-direction: row;
+      gap: 12px;
+      padding: 18px 20px;
+      border-right: none;
+      border-bottom: var(--border);
+      font-size: 1.8rem;
+
+      svg {
+        width: 60px;
+        height: 60px;
+      }
+    }
+
+    .respuesta {
+      padding: 22px 20px 24px;
+
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  }
+</style>

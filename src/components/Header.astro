@@ -2,6 +2,14 @@
 import SidebarMobile from "./SidebarMobile.astro";
 import MenuIcon from "../assets/menu-2.svg";
 import Logo from "../assets/logo.svg";
+
+const enlaces = [
+  { href: "/", texto: "Inicio" },
+  { href: "/nosotros", texto: "Nosotros" },
+];
+
+// Sin la diagonal del final, porque en el build la ruta llega como /nosotros/
+const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
 ---
 
 <header>
@@ -15,8 +23,13 @@ import Logo from "../assets/logo.svg";
     <MenuIcon aria-hidden="true" />
   </button>
   <nav aria-label="Principal">
-    <a href="/">Inicio</a>
-    <a href="/nosotros">Nosotros</a>
+    {
+      enlaces.map(({ href, texto }) => (
+        <a href={href} aria-current={href === actual ? "page" : undefined}>
+          {texto}
+        </a>
+      ))
+    }
   </nav>
   <a href="/" class="brand-mobile">VetCareHub</a>
   <div class="logo-mobile">
@@ -169,6 +182,12 @@ import Logo from "../assets/logo.svg";
       &:focus-visible {
         outline: var(--focus-ring);
         outline-offset: -3px;
+      }
+
+      /* La página en la que estás se pinta de marino, igual que el punto activo del carrusel */
+      &[aria-current="page"] {
+        background-color: var(--color-primary);
+        color: var(--color-white);
       }
     }
 
