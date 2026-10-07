@@ -119,23 +119,14 @@ const capitulos = [
       ...historia.querySelectorAll<HTMLButtonElement>(".linea button"),
     ];
     let actual = 0;
+    // Capítulo al que va la pista después de un clic, mientras todavía no llega
+    let destino: number | null = null;
 
     // Centro de la lámina medido dentro de la pista
     const centro = (capitulo: HTMLElement) =>
       capitulo.offsetLeft + capitulo.offsetWidth / 2;
 
-    // El capítulo actual es el que quedó más cerca del centro de la pista.
-    // Como el scroll-snap siempre termina en una lámina centrada, el año no parpadea
-    const alDesplazar = () => {
-      const medio = pista.scrollLeft + pista.clientWidth / 2;
-      let indice = 0;
-      capitulos.forEach((capitulo, i) => {
-        if (
-          Math.abs(centro(capitulo) - medio) <
-          Math.abs(centro(capitulos[indice]) - medio)
-        )
-          indice = i;
-      });
+    const marcar = (indice: number) => {
       if (indice === actual) return;
       actual = indice;
       capitulos.forEach((capitulo, i) =>
@@ -149,15 +140,53 @@ const capitulos = [
       siguiente.disabled = indice === capitulos.length - 1;
     };
 
+    // El capítulo actual es el que quedó más cerca del centro de la pista.
+    // Como el scroll-snap siempre termina en una lámina centrada, el año no parpadea
+    const alDesplazar = () => {
+      const medio = pista.scrollLeft + pista.clientWidth / 2;
+      let indice = 0;
+      capitulos.forEach((capitulo, i) => {
+        if (
+          Math.abs(centro(capitulo) - medio) <
+          Math.abs(centro(capitulos[indice]) - medio)
+        )
+          indice = i;
+      });
+      // Camino a un destino los capítulos por los que pasa no se marcan
+      if (destino !== null) {
+        if (indice !== destino) return;
+        destino = null;
+      }
+      marcar(indice);
+    };
+
+    // El destino se marca desde el clic, así un segundo clic seguido en la flecha
+    // avanza otro capítulo en vez de pedir el mismo
     const irA = (indice: number) => {
       const capitulo = capitulos[indice];
-      if (capitulo)
-        pista.scrollTo({ left: centro(capitulo) - pista.clientWidth / 2 });
+      if (!capitulo) return;
+      destino = indice;
+      marcar(indice);
+      pista.scrollTo({ left: centro(capitulo) - pista.clientWidth / 2 });
     };
 
     anios.forEach((anio, i) => anio.addEventListener("click", () => irA(i)));
     anterior.addEventListener("click", () => irA(actual - 1));
     siguiente.addEventListener("click", () => irA(actual + 1));
+
+    // Si la persona toma la pista a medio camino, vuelve a mandar el scroll
+    const soltarDestino = () => (destino = null);
+    pista.addEventListener("pointerdown", soltarDestino);
+    pista.addEventListener("wheel", soltarDestino, { passive: true });
+    pista.addEventListener("keydown", soltarDestino);
+
+    // Fuera de pantalla las ilustraciones se detienen para no gastar batería
+    new IntersectionObserver((entradas) =>
+      historia.toggleAttribute(
+        "data-fuera",
+        !entradas[entradas.length - 1].isIntersecting,
+      ),
+    ).observe(historia);
 
     // Los años y las flechas solo funcionan con JS; sin él queda la pista, que se desliza sola
     historia.toggleAttribute("data-controles", true);
@@ -225,6 +254,11 @@ const capitulos = [
     overscroll-behavior-x: contain;
     /* Los años de abajo hacen de barra */
     scrollbar-width: none;
+
+    /* Safari anterior a 18.2 no conoce scrollbar-width */
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     &:focus-visible {
       outline: var(--focus-ring);
@@ -374,6 +408,13 @@ const capitulos = [
       :global(.foco ~ .foco) {
         animation-delay: 0.8s;
       }
+    }
+
+    /* data-fuera lo pone el script cuando la historia sale de la pantalla */
+    .historia[data-fuera]
+      .capitulo.is-active
+      :global(:is(.cola, .ojos, .corazon, .lampara, .luz, .foco)) {
+      animation-play-state: paused;
     }
   }
 
