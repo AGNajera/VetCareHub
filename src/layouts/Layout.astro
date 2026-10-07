@@ -106,6 +106,56 @@ const { titulo } = Astro.props;
     line-height: 1.55;
   }
 
+  /* Animaciones de las ilustraciones que comparten el carrusel y la historia */
+  /* Todas empiezan y terminan en la posición original (0%, 100%) para que al hacer hover
+     el movimiento arranque suave y no brinque directo a un extremo */
+  @keyframes menear {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -10deg;
+    }
+    75% {
+      rotate: 10deg;
+    }
+  }
+
+  @keyframes balancear {
+    0%,
+    100% {
+      rotate: 0deg;
+    }
+    25% {
+      rotate: -6deg;
+    }
+    75% {
+      rotate: 6deg;
+    }
+  }
+
+  @keyframes parpadear {
+    0%,
+    90%,
+    100% {
+      scale: 1 1;
+    }
+    95% {
+      scale: 1 0.1;
+    }
+  }
+
+  @keyframes latir {
+    0%,
+    100% {
+      scale: 1;
+    }
+    50% {
+      scale: 1.15;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;

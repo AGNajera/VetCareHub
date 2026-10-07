@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <!-- 2022, llegó Canela: con la pata vendada, esperando junto a la puerta en el tapete de la entrada -->
+  <rect width="600" height="600" fill="#dff0ea" />
+  <rect y="462" width="600" height="138" fill="#c4e2d6" />
+  <rect y="458" width="600" height="8" fill="#a9d3c3" />
+
+  <!-- Puerta -->
+  <rect x="392" y="150" width="134" height="312" rx="8" fill="#01215b" />
+  <rect x="410" y="170" width="98" height="116" rx="6" fill="#9fd3c1" />
+  <path d="M449 204h20v14h14v20h-14v14h-20v-14h-14v-20h14z" fill="#fff" />
+  <circle cx="412" cy="340" r="8" fill="#f5d372" />
+
+  <!-- Tapete -->
+  <rect x="112" y="472" width="276" height="22" rx="11" fill="#3f8f7a" />
+
+  <g transform="translate(-50 58.5) scale(.75)">
+    <path class="cola" d="M500 520c70-10 90-80 60-110" stroke="#c98e50" stroke-width="26" fill="none" stroke-linecap="round" />
+    <ellipse cx="400" cy="478" rx="112" ry="92" fill="#e0a868" />
+    <ellipse cx="400" cy="500" rx="60" ry="62" fill="#f6e3c8" />
+    <rect x="348" y="490" width="36" height="72" rx="18" fill="#e0a868" />
+    <rect x="416" y="490" width="36" height="72" rx="18" fill="#e0a868" />
+    <!-- Venda -->
+    <rect x="344" y="512" width="44" height="34" rx="7" fill="#fff" stroke="#01215b" stroke-width="4" />
+    <path d="M362 522h8v4h4v8h-4v4h-8v-4h-4v-8h4z" fill="#f4a9a0" />
+
+    <circle cx="400" cy="335" r="90" fill="#e0a868" />
+    <ellipse cx="322" cy="330" rx="30" ry="64" fill="#9c6a3c" transform="rotate(22 322 330)" />
+    <ellipse cx="478" cy="330" rx="30" ry="64" fill="#9c6a3c" transform="rotate(-22 478 330)" />
+    <ellipse cx="400" cy="372" rx="50" ry="38" fill="#f6e3c8" />
+    <ellipse cx="400" cy="354" rx="17" ry="12" fill="#01215b" />
+    <path d="M400 366v14m-18 4c10 10 26 10 36 0" stroke="#01215b" stroke-width="5" fill="none" stroke-linecap="round" />
+    <g class="ojos">
+      <circle cx="366" cy="318" r="10" fill="#01215b" />
+      <circle cx="434" cy="318" r="10" fill="#01215b" />
+    </g>
+    <rect x="338" y="414" width="124" height="20" rx="10" fill="#3f8f7a" />
+    <circle cx="400" cy="446" r="13" fill="#f5d372" />
+  </g>
+
+  <path class="corazon" d="M150 250c-26-17-36-30-36-42 0-11 8-18 17-18 8 0 14 4 19 11 5-7 11-11 19-11 9 0 17 7 17 18 0 12-10 25-36 42z" fill="#f4a9a0" />
+</svg>

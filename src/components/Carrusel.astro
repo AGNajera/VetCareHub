@@ -263,55 +263,7 @@ const images = [
     }
   }
 
-  /* Todas empiezan y terminan en la posición original (0%, 100%) para que al hacer hover
-     el movimiento arranque suave y no brinque directo a un extremo */
-  @keyframes menear {
-    0%,
-    100% {
-      rotate: 0deg;
-    }
-    25% {
-      rotate: -10deg;
-    }
-    75% {
-      rotate: 10deg;
-    }
-  }
-
-  @keyframes balancear {
-    0%,
-    100% {
-      rotate: 0deg;
-    }
-    25% {
-      rotate: -6deg;
-    }
-    75% {
-      rotate: 6deg;
-    }
-  }
-
-  @keyframes parpadear {
-    0%,
-    90%,
-    100% {
-      scale: 1 1;
-    }
-    95% {
-      scale: 1 0.1;
-    }
-  }
-
-  @keyframes latir {
-    0%,
-    100% {
-      scale: 1;
-    }
-    50% {
-      scale: 1.15;
-    }
-  }
-
+  /* menear, balancear, parpadear y latir están en Layout.astro: también los usa la historia */
   @keyframes flotar {
     0%,
     100% {
