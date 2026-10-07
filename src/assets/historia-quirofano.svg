@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <!-- 2019, la clínica de hoy por dentro: quirófano al centro, el monitor de signos vitales
+       a la izquierda y hospitalización a la derecha -->
+  <rect width="600" height="600" fill="#e3f1f5" />
+  <rect y="450" width="600" height="150" fill="#c4e2d6" />
+  <rect y="446" width="600" height="8" fill="#a9d3c3" />
+
+  <!-- Lámpara del quirófano -->
+  <path class="luz" d="M235 152h130l55 210H180z" fill="#f5d372" opacity=".3" />
+  <rect x="296" width="8" height="124" fill="#01215b" />
+  <ellipse cx="300" cy="138" rx="95" ry="28" fill="#01215b" />
+  <ellipse cx="300" cy="150" rx="72" ry="13" fill="#f5d372" />
+
+  <!-- Mesa del quirófano -->
+  <rect x="190" y="360" width="220" height="16" rx="8" fill="#9fd3c1" />
+  <rect x="170" y="372" width="260" height="22" rx="11" fill="#01215b" />
+  <rect x="288" y="394" width="24" height="70" fill="#01215b" />
+  <rect x="236" y="460" width="128" height="16" rx="8" fill="#01215b" />
+
+  <!-- Monitor de signos vitales -->
+  <rect x="62" y="222" width="92" height="66" rx="8" fill="#01215b" />
+  <rect x="69" y="229" width="78" height="52" rx="5" fill="#dff0ea" />
+  <path d="M75 260h12l6-16 8 28 7-18 4 6h10" stroke="#3f8f7a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <g transform="translate(135 240) scale(.26)">
+    <path class="corazon" d="M0 22c-26-17-36-30-36-42 0-11 8-18 17-18 8 0 14 4 19 11 5-7 11-11 19-11 9 0 17 7 17 18 0 12-10 25-36 42z" fill="#f4a9a0" />
+  </g>
+  <rect x="102" y="288" width="12" height="12" fill="#01215b" />
+  <rect x="52" y="300" width="112" height="10" rx="5" fill="#01215b" />
+
+  <!-- Hospitalización -->
+  <rect x="440" y="290" width="100" height="160" rx="8" fill="#fff" stroke="#01215b" stroke-width="6" />
+  <path d="M440 370h100" stroke="#01215b" stroke-width="6" />
+  <path d="M465 304v52m25-52v52m25-52v52M465 384v52m25-52v52m25-52v52" stroke="#01215b" stroke-width="4" stroke-linecap="round" />
+  <circle class="foco" cx="490" cy="330" r="9" fill="#f5d372" />
+  <circle class="foco" cx="490" cy="410" r="9" fill="#9fd3c1" />
+</svg>

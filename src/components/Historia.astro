@@ -1,37 +1,38 @@
 ---
-import Consulta from "../assets/consulta.svg";
-import Vacunacion from "../assets/vacunacion.svg";
-import Clinica from "../assets/clinica.svg";
-import Mascota from "../assets/mascota.svg";
+// Ilustraciones propias de la historia, cuadradas porque van recortadas en círculo
+import Consultorio from "../assets/historia-consultorio.svg";
+import Sabados from "../assets/historia-sabados.svg";
+import Quirofano from "../assets/historia-quirofano.svg";
+import Canela from "../assets/historia-canela.svg";
 
 const capitulos = [
   {
-    Svg: Consulta,
-    alt: "Perro sentado en la mesa de revisión del consultorio",
+    Svg: Consultorio,
+    alt: "Consultorio con una mesa de revisión, una báscula y un botiquín",
     anio: 2012,
     titulo: "El primer consultorio",
     texto:
       "Abrimos sobre la avenida Emiliano Zapata con una mesa de revisión, una báscula y un botiquín. Las consultas eran con cita y las urgencias, a la hora que llegaran.",
   },
   {
-    Svg: Vacunacion,
-    alt: "Gato con una curita junto a su cartilla de vacunación",
+    Svg: Sabados,
+    alt: "Un perrito y un gato en la fila, bajo un calendario con los sábados marcados",
     anio: 2015,
     titulo: "Sábados de vacunación",
     texto:
       "Empezamos a vacunar los sábados a los perros y gatos del barrio. De ahí viene la costumbre de anotar cada dosis en la cartilla y avisar cuando toca la siguiente.",
   },
   {
-    Svg: Clinica,
-    alt: "Fachada de la clínica VetCareHub con un perrito paseando",
+    Svg: Quirofano,
+    alt: "Quirófano con su lámpara, un monitor de signos vitales y las jaulas de hospitalización",
     anio: 2019,
     titulo: "La clínica de hoy",
     texto:
       "Nos cambiamos al número 123, con quirófano, laboratorio y hospitalización separada para perros y gatos. Desde entonces casi todo se resuelve aquí mismo.",
   },
   {
-    Svg: Mascota,
-    alt: "Canela, la perrita de la clínica, sentada",
+    Svg: Canela,
+    alt: "Canela, con una pata vendada, sentada junto a la puerta de la clínica",
     anio: 2022,
     titulo: "Llegó Canela",
     texto:
@@ -40,38 +41,57 @@ const capitulos = [
 ];
 ---
 
-<section class="section historia" style={`--pasos: ${capitulos.length}`}>
+<section class="section historia">
   <div class="panel">
     <h2>Nuestra historia</h2>
 
-    <div class="escena" data-lado="izquierda">
-      <div class="retrato">
+    <!-- Pista horizontal: cada capítulo es una lámina y se pasa de una a otra deslizando
+         de lado. tabindex la deja recorrerse también con las flechas del teclado -->
+    <div class="visor">
+      <ol class="capitulos" tabindex="0" aria-label="Capítulos de la historia">
         {
-          capitulos.map(({ Svg, alt }, i) => (
-            <Svg
-              class:list={["imagen", { "is-active": i === 0 }]}
-              role="img"
-              preserveAspectRatio="xMidYMid slice"
-              aria-label={alt}
-              aria-hidden={i === 0 ? "false" : "true"}
-            />
-          ))
-        }
-      </div>
-
-      <ol class="capitulos">
-        {
-          capitulos.map(({ anio, titulo, texto }, i) => (
+          capitulos.map(({ Svg, alt, anio, titulo, texto }, i) => (
             <li class:list={["capitulo", { "is-active": i === 0 }]}>
-              <h3>
-                <span class="anio">{anio}</span>
-                {titulo}
-              </h3>
-              <p>{texto}</p>
+              <div class="retrato">
+                <Svg
+                  class="imagen"
+                  role="img"
+                  preserveAspectRatio="xMidYMid slice"
+                  aria-label={alt}
+                />
+              </div>
+              <div class="texto">
+                <h3>
+                  <span class="anio">{anio}</span>
+                  {titulo}
+                </h3>
+                <p>{texto}</p>
+              </div>
             </li>
           ))
         }
       </ol>
+
+      <!-- Una flecha en cada orilla, encima de la lámina vecina que se asoma -->
+      <button
+        class="flecha anterior"
+        type="button"
+        aria-label="Capítulo anterior"
+        disabled
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 6l-6 6l6 6"></path>
+        </svg>
+      </button>
+      <button
+        class="flecha siguiente"
+        type="button"
+        aria-label="Capítulo siguiente"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 6l6 6l-6 6"></path>
+        </svg>
+      </button>
     </div>
 
     <div class="linea" role="group" aria-label="Años de la historia">
@@ -84,118 +104,257 @@ const capitulos = [
       }
     </div>
   </div>
-
-  <!-- Espacio vacío que se recorre con el scroll mientras el panel está fijo -->
-  <div class="recorrido" aria-hidden="true"></div>
 </section>
 
 <script>
   const historia = document.querySelector<HTMLElement>(".historia");
-  const panel = historia?.querySelector<HTMLElement>(".panel");
-  const escena = historia?.querySelector<HTMLElement>(".escena");
-  const recorrido = historia?.querySelector<HTMLElement>(".recorrido");
+  const pista = historia?.querySelector<HTMLElement>(".capitulos");
 
-  if (historia && panel && escena && recorrido) {
-    const imagenes = [...historia.querySelectorAll<SVGSVGElement>(".imagen")];
-    const capitulos = [...historia.querySelectorAll<HTMLElement>(".capitulo")];
+  const anterior = historia?.querySelector<HTMLButtonElement>(".anterior");
+  const siguiente = historia?.querySelector<HTMLButtonElement>(".siguiente");
+
+  if (historia && pista && anterior && siguiente) {
+    const capitulos = [...pista.querySelectorAll<HTMLElement>(".capitulo")];
     const anios = [
       ...historia.querySelectorAll<HTMLButtonElement>(".linea button"),
     ];
     let actual = 0;
+    // Capítulo al que va la pista después de un clic, mientras todavía no llega
+    let destino: number | null = null;
 
-    const mostrar = (indice: number) => {
+    // Centro de la lámina medido dentro de la pista
+    const centro = (capitulo: HTMLElement) =>
+      capitulo.offsetLeft + capitulo.offsetWidth / 2;
+
+    const marcar = (indice: number) => {
       if (indice === actual) return;
       actual = indice;
-      // El círculo empieza a la izquierda y cruza al otro lado en cada capítulo
-      escena.dataset.lado = indice % 2 === 0 ? "izquierda" : "derecha";
-      imagenes.forEach((imagen, i) => {
-        imagen.classList.toggle("is-active", i === indice);
-        imagen.setAttribute("aria-hidden", String(i !== indice));
-      });
       capitulos.forEach((capitulo, i) =>
         capitulo.classList.toggle("is-active", i === indice),
       );
       anios.forEach((anio, i) =>
         anio.setAttribute("aria-current", String(i === indice)),
       );
+      // En las orillas la flecha que ya no lleva a ningún lado se quita
+      anterior.disabled = indice === 0;
+      siguiente.disabled = indice === capitulos.length - 1;
     };
 
-    // Mientras el panel está fijo su orilla de abajo no se mueve y `recorrido` sigue
-    // subiendo; lo que se han separado es lo que se ha avanzado en la historia
+    // El capítulo actual es el que quedó más cerca del centro de la pista.
+    // Como el scroll-snap siempre termina en una lámina centrada, el año no parpadea
     const alDesplazar = () => {
-      const largo = recorrido.offsetHeight;
-      // Sin `recorrido` (pantalla muy bajita) los capítulos se leen en lista
-      if (!largo) return;
-      const avance =
-        (panel.getBoundingClientRect().bottom -
-          recorrido.getBoundingClientRect().top) /
-        largo;
-      const indice = Math.floor(avance * capitulos.length);
-      mostrar(Math.max(0, Math.min(capitulos.length - 1, indice)));
+      const medio = pista.scrollLeft + pista.clientWidth / 2;
+      let indice = 0;
+      capitulos.forEach((capitulo, i) => {
+        if (
+          Math.abs(centro(capitulo) - medio) <
+          Math.abs(centro(capitulos[indice]) - medio)
+        )
+          indice = i;
+      });
+      // Camino a un destino los capítulos por los que pasa no se marcan
+      if (destino !== null) {
+        if (indice !== destino) return;
+        destino = null;
+      }
+      marcar(indice);
     };
 
-    // Los años llevan a la mitad del tramo de scroll de su capítulo
-    anios.forEach((anio, i) =>
-      anio.addEventListener("click", () => {
-        const inicio =
-          window.scrollY +
-          recorrido.getBoundingClientRect().top -
-          panel.offsetHeight -
-          parseFloat(getComputedStyle(panel).top);
-        const tramo = recorrido.offsetHeight / capitulos.length;
-        window.scrollTo({ top: inicio + tramo * (i + 0.5) });
-      }),
-    );
+    // El destino se marca desde el clic, así un segundo clic seguido en la flecha
+    // avanza otro capítulo en vez de pedir el mismo
+    const irA = (indice: number) => {
+      const capitulo = capitulos[indice];
+      if (!capitulo) return;
+      destino = indice;
+      marcar(indice);
+      pista.scrollTo({ left: centro(capitulo) - pista.clientWidth / 2 });
+    };
 
-    // El panel fijo solo se activa con JS; sin él los capítulos quedan en lista
-    historia.toggleAttribute("data-fija", true);
-    window.addEventListener("scroll", alDesplazar, { passive: true });
-    window.addEventListener("resize", alDesplazar);
+    anios.forEach((anio, i) => anio.addEventListener("click", () => irA(i)));
+    anterior.addEventListener("click", () => irA(actual - 1));
+    siguiente.addEventListener("click", () => irA(actual + 1));
+
+    // Si la persona toma la pista a medio camino, vuelve a mandar el scroll
+    const soltarDestino = () => (destino = null);
+    pista.addEventListener("pointerdown", soltarDestino);
+    pista.addEventListener("wheel", soltarDestino, { passive: true });
+    pista.addEventListener("keydown", soltarDestino);
+
+    // Fuera de pantalla las ilustraciones se detienen para no gastar batería
+    new IntersectionObserver((entradas) =>
+      historia.toggleAttribute(
+        "data-fuera",
+        !entradas[entradas.length - 1].isIntersecting,
+      ),
+    ).observe(historia);
+
+    // Los años y las flechas solo funcionan con JS; sin él queda la pista, que se desliza sola
+    historia.toggleAttribute("data-controles", true);
+    pista.addEventListener("scroll", alDesplazar, { passive: true });
     alDesplazar();
   }
 </script>
 
 <style>
+  /* La historia ocupa todo el ancho de la página, no la columna de 1080px de .section */
   .historia {
-    /* Cuánto scroll dura cada capítulo mientras el panel está fijo */
-    --paso: 60vh;
-    /* Alto del header sticky más un margen */
-    --arriba: 70px;
-    /* También depende del alto para que quepa en el panel fijo */
-    --retrato: clamp(200px, min(32vw, 46svh), 380px);
+    --retrato: clamp(200px, 28vw, 320px);
     --hueco: clamp(24px, 4vw, 48px);
-    /* Lo que se recorre el texto cuando el círculo cruza a la derecha */
-    --cruce-texto: calc(-1 * (var(--retrato) + var(--hueco)));
+    /* Misma columna que el resto de las secciones, para alinear el título y los años */
+    --margen: max(16px, (100% - 1080px) / 2 + 16px);
 
-    padding-block: 16px 56px;
+    width: 100%;
+    padding: 16px 0 56px;
   }
 
+  /* Es contenedor para que las láminas midan su ancho con cqw */
   .panel {
+    container-type: inline-size;
     display: grid;
+    /* minmax(0, …) para que la pista no ensanche la columna a todo su contenido:
+       si la columna crece, la pista ya no se desborda y no hay nada que deslizar */
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
-    padding: clamp(18px, 4vw, 40px);
-    border: var(--border);
-    border-radius: 24px;
+    padding-block: clamp(18px, 4vw, 40px);
+    border-block: var(--border);
     background-color: var(--color-mint);
 
     h2 {
       margin: 0;
+      padding-inline: var(--margen);
     }
   }
 
-  /* Es contenedor para que el círculo pueda medir el ancho de la escena con cqw */
-  .escena {
-    container-type: inline-size;
+  .visor {
+    position: relative;
+  }
+
+  .capitulos {
+    /* Más angosta que la pista: las láminas vecinas se asoman a los lados y así se ve
+       que la historia sigue en horizontal */
+    --lamina: min(100cqw - 128px, 860px);
+
+    /* Para que offsetLeft de cada capítulo se mida desde la pista */
+    position: relative;
+    display: flex;
+    gap: var(--hueco);
+    margin: 0;
+    /* Deja que la primera y la última también queden centradas */
+    padding: 0 calc((100cqw - var(--lamina)) / 2);
+    list-style: none;
+    overflow-x: auto;
+    /* Sin esto overflow-x la vuelve deslizable también en vertical y se queda con la
+       rueda del mouse en vez de dejar bajar la página */
+    overflow-y: hidden;
+    /* mandatory: siempre termina en una lámina centrada, nunca a medias entre dos.
+       El stop de cada lámina frena los gestos fuertes para que no se brinquen capítulos */
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    /* Al llegar a la orilla no dispara el gesto de "página anterior" del navegador */
+    overscroll-behavior-x: contain;
+    /* Los años de abajo hacen de barra */
+    scrollbar-width: none;
+
+    /* Safari anterior a 18.2 no conoce scrollbar-width */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+  }
+
+  .capitulo {
+    flex: 0 0 var(--lamina);
     display: grid;
     grid-template-columns: var(--retrato) minmax(0, 1fr);
-    align-items: start;
+    align-items: center;
     gap: var(--hueco);
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transition: opacity 300ms ease;
+  }
+
+  /* El círculo cambia de lado en cada capítulo */
+  .capitulo:nth-child(even) {
+    grid-template-columns: minmax(0, 1fr) var(--retrato);
+
+    .retrato {
+      order: 1;
+    }
+  }
+
+  /* Las vecinas se apagan para que se lea solo la del centro. Lo marca el script */
+  .historia[data-controles] .capitulo:not(.is-active) {
+    opacity: 0.4;
+  }
+
+  .flecha {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    display: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: var(--border);
+    border-radius: 50%;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: opacity 200ms ease;
+
+    svg {
+      width: 26px;
+      height: 26px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+
+    &:disabled {
+      visibility: hidden;
+    }
+  }
+
+  .anterior {
+    left: clamp(8px, 2cqw, 32px);
+  }
+
+  .siguiente {
+    right: clamp(8px, 2cqw, 32px);
+  }
+
+  /* Con mouse las flechas solo salen al pasar por la historia (o al llegar con el teclado);
+     en pantallas táctiles no hay hover y se quedan siempre a la vista */
+  @media (hover: hover) and (pointer: fine) {
+    .flecha {
+      opacity: 0;
+    }
+
+    /* Va aquí porque en táctil el hover se queda pegado después de tocar la flecha */
+    .flecha:hover {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    .panel:hover .flecha,
+    .flecha:focus-visible {
+      opacity: 1;
+    }
   }
 
   .retrato {
-    position: relative;
-    /* Pasa por encima del texto cuando se cruzan */
-    z-index: 1;
     width: var(--retrato);
     aspect-ratio: 1;
     border: var(--border);
@@ -205,30 +364,76 @@ const capitulos = [
   }
 
   .imagen {
-    position: absolute;
-    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
-    opacity: 0;
-    transition: opacity 600ms ease;
   }
 
-  .imagen.is-active {
-    opacity: 1;
+  /* Solo se mueve la ilustración del capítulo que se está leyendo. Las clases vienen de los
+     archivos en src/assets, por eso se usa :global (Astro no les pone su atributo de scope) */
+  @media (prefers-reduced-motion: no-preference) {
+    .retrato :global(:is(.cola, .ojos, .corazon, .lampara, .foco)) {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .capitulo.is-active {
+      :global(.cola) {
+        transform-origin: left bottom;
+        animation: menear 0.8s ease-in-out infinite;
+      }
+
+      :global(.ojos) {
+        animation: parpadear 3s ease-in-out infinite;
+      }
+
+      :global(.corazon) {
+        animation: latir 0.9s ease-in-out infinite;
+      }
+
+      :global(.lampara) {
+        transform-origin: center top;
+        animation: balancear 3.2s ease-in-out infinite;
+      }
+
+      :global(.luz) {
+        animation: alumbrar 2.4s ease-in-out infinite;
+      }
+
+      /* Las luces de las jaulas laten una después de la otra */
+      :global(.foco) {
+        animation: latir 1.6s ease-in-out infinite;
+      }
+
+      :global(.foco ~ .foco) {
+        animation-delay: 0.8s;
+      }
+    }
+
+    /* data-fuera lo pone el script cuando la historia sale de la pantalla */
+    .historia[data-fuera]
+      .capitulo.is-active
+      :global(:is(.cola, .ojos, .corazon, .lampara, .luz, .foco)) {
+      animation-play-state: paused;
+    }
   }
 
-  .capitulos {
-    display: grid;
-    gap: 28px;
-    margin: 0;
+  @keyframes alumbrar {
+    0%,
+    100% {
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.75;
+    }
+  }
+
+  .texto {
     padding: clamp(18px, 3vw, 32px);
-    list-style: none;
     border: var(--border);
     border-radius: 14px;
     background-color: var(--color-white);
-  }
 
-  .capitulo {
     h3 {
       margin: 0 0 8px;
       font-family: var(--font-bold);
@@ -251,14 +456,11 @@ const capitulos = [
     }
   }
 
-  .linea,
-  .recorrido {
-    display: none;
-  }
-
   /* La línea del tiempo pasa por detrás de los años */
   .linea {
     position: relative;
+    display: none;
+    margin-inline: var(--margen);
     justify-content: space-between;
     align-items: center;
 
@@ -298,22 +500,47 @@ const capitulos = [
     }
   }
 
+  /* data-controles lo pone el script */
+  .historia[data-controles] .linea {
+    display: flex;
+  }
+
+  .historia[data-controles] .flecha {
+    display: grid;
+  }
+
   @media (max-width: 640px) {
     .historia {
-      --arriba: 66px;
-      /* Lo que sobra de alto después del título, el texto y los años */
-      --retrato: clamp(110px, 100svh - 490px, 52vw);
-      /* En celular el texto se queda abajo y solo cruza el círculo */
-      --cruce-texto: 0px;
+      --retrato: min(48cqw, 240px);
     }
 
     .panel {
       gap: 14px;
     }
 
-    .escena {
+    .capitulos {
+      --lamina: calc(100cqw - 64px);
+      gap: 16px;
+    }
+
+    /* En celular el texto va abajo y el círculo al centro, con una flecha de cada lado */
+    .capitulo,
+    .capitulo:nth-child(even) {
       grid-template-columns: minmax(0, 1fr);
+      align-content: start;
       gap: 14px;
+    }
+
+    .capitulo .retrato,
+    .capitulo:nth-child(even) .retrato {
+      order: 0;
+      justify-self: center;
+    }
+
+    .flecha {
+      top: calc(var(--retrato) / 2);
+      width: 40px;
+      height: 40px;
     }
 
     .linea button {
@@ -321,7 +548,7 @@ const capitulos = [
       font-size: 0.95rem;
     }
 
-    .capitulo {
+    .texto {
       .anio {
         font-size: 2rem;
       }
@@ -337,82 +564,14 @@ const capitulos = [
     }
   }
 
-  /* Panel fijo: se queda pegado debajo del header mientras se recorre `recorrido`,
-     y en cada capítulo cambian el lado del círculo, la imagen y el texto.
-     data-fija lo pone el script; en pantallas muy bajitas no cabría y se deja la lista */
-  @media (min-height: 600px) {
-    .historia[data-fija] {
-      .panel {
-        position: sticky;
-        top: var(--arriba);
-        grid-template-rows: auto minmax(0, 1fr) auto;
-        height: calc(100svh - var(--arriba) - 16px);
-      }
-
-      .recorrido {
-        display: block;
-        height: calc(var(--pasos) * var(--paso));
-      }
-
-      .linea {
-        display: flex;
-      }
-
-      .escena {
-        align-content: center;
-        align-items: center;
-      }
-
-      .retrato,
-      .capitulos {
-        transition: translate 800ms cubic-bezier(0.65, 0, 0.35, 1);
-      }
-
-      .escena[data-lado="derecha"] {
-        .retrato {
-          translate: calc(100cqw - 100%) 0;
-        }
-
-        .capitulos {
-          translate: var(--cruce-texto) 0;
-        }
-      }
-
-      /* Todos los capítulos ocupan la misma celda, así la caja no cambia de alto */
-      .capitulos {
-        gap: 0;
-      }
-
-      /* Se ocultan solo con opacity para que un lector de pantalla pueda leerlos todos;
-         pointer-events evita seleccionar por accidente el texto de uno invisible */
-      .capitulo {
-        grid-area: 1 / 1;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 300ms ease;
-      }
-
-      /* El que entra espera a que el círculo vaya a medio camino */
-      .capitulo.is-active {
-        opacity: 1;
-        pointer-events: auto;
-        transition: opacity 450ms ease 300ms;
-      }
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
-    .imagen {
-      transition: none;
+    .capitulos {
+      scroll-behavior: auto;
     }
 
-    .historia[data-fija] {
-      .retrato,
-      .capitulos,
-      .capitulo,
-      .capitulo.is-active {
-        transition: none;
-      }
+    .capitulo,
+    .flecha {
+      transition: none;
     }
   }
 </style>

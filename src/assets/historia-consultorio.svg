@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <!-- 2012, el primer consultorio: mesa de revisión, báscula y botiquín. Va recortado en círculo,
+       por eso todo queda lejos de las esquinas -->
+  <rect width="600" height="600" fill="#dff0ea" />
+  <rect y="450" width="600" height="150" fill="#c4e2d6" />
+  <rect y="446" width="600" height="8" fill="#a9d3c3" />
+
+  <!-- Lámpara -->
+  <g class="lampara">
+    <rect x="297" width="6" height="96" fill="#01215b" />
+    <path d="M262 150l18-54h40l18 54z" fill="#f5d372" stroke="#01215b" stroke-width="6" stroke-linejoin="round" />
+  </g>
+
+  <!-- Botiquín -->
+  <rect x="120" y="150" width="110" height="130" rx="12" fill="#fff" stroke="#01215b" stroke-width="6" />
+  <path d="M165 190h20v15h15v20h-15v15h-20v-15h-15v-20h15z" fill="#3f8f7a" />
+
+  <!-- Mesa de revisión -->
+  <rect x="130" y="338" width="210" height="16" rx="8" fill="#9fd3c1" />
+  <rect x="110" y="350" width="250" height="22" rx="11" fill="#01215b" />
+  <rect x="140" y="372" width="16" height="104" fill="#01215b" />
+  <rect x="314" y="372" width="16" height="104" fill="#01215b" />
+
+  <!-- Báscula -->
+  <rect x="496" y="300" width="10" height="150" fill="#01215b" />
+  <circle cx="501" cy="278" r="36" fill="#fff" stroke="#01215b" stroke-width="6" />
+  <path d="M501 252v8M475 278h8M527 278h-8" stroke="#01215b" stroke-width="4" stroke-linecap="round" />
+  <path d="M501 278l14-16" stroke="#3f8f7a" stroke-width="6" stroke-linecap="round" />
+  <circle cx="501" cy="278" r="5" fill="#01215b" />
+  <rect x="396" y="444" width="118" height="12" rx="6" fill="#9fd3c1" />
+  <rect x="388" y="454" width="134" height="20" rx="8" fill="#01215b" />
+</svg>
