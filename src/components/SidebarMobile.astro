@@ -124,19 +124,29 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
     /* Solo desenfoca la página de atrás, sin oscurecerla */
     backdrop-filter: blur(6px);
     opacity: 0;
+    /* Con opacity 0 el navegador puede seguir calculando el blur de toda la página;
+       visibility lo apaga por completo mientras el menú está cerrado */
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 280ms ease;
+    transition:
+      opacity 280ms ease,
+      visibility 0s linear 280ms;
   }
 
   .sidebar-backdrop[data-open] {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
+    transition:
+      opacity 280ms ease,
+      visibility 0s;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .sidebar,
     .sidebar[data-open],
-    .sidebar-backdrop {
+    .sidebar-backdrop,
+    .sidebar-backdrop[data-open] {
       transition: none;
     }
   }
