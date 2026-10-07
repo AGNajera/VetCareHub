@@ -83,7 +83,11 @@ const capitulos = [
           <path d="M15 6l-6 6l6 6"></path>
         </svg>
       </button>
-      <button class="flecha siguiente" type="button" aria-label="Capítulo siguiente">
+      <button
+        class="flecha siguiente"
+        type="button"
+        aria-label="Capítulo siguiente"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M9 6l6 6l-6 6"></path>
         </svg>
@@ -213,7 +217,8 @@ const capitulos = [
     /* Sin esto overflow-x la vuelve deslizable también en vertical y se queda con la
        rueda del mouse en vez de dejar bajar la página */
     overflow-y: hidden;
-    /* mandatory + stop: cada gesto avanza un solo capítulo, por fuerte que sea */
+    /* mandatory: siempre termina en una lámina centrada, nunca a medias entre dos.
+       El stop de cada lámina frena los gestos fuertes para que no se brinquen capítulos */
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     /* Al llegar a la orilla no dispara el gesto de "página anterior" del navegador */
@@ -369,7 +374,6 @@ const capitulos = [
       :global(.foco ~ .foco) {
         animation-delay: 0.8s;
       }
-
     }
   }
 
