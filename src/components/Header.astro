@@ -5,7 +5,9 @@ import Logo from "../assets/logo.svg";
 
 const enlaces = [
   { href: "/", texto: "Inicio" },
+  { href: "/#servicios", texto: "Servicios" },
   { href: "/nosotros", texto: "Nosotros" },
+  { href: "#contacto", texto: "Contacto" },
 ];
 
 // Sin la diagonal del final, porque en el build la ruta llega como /nosotros/
@@ -189,11 +191,6 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
         background-color: var(--color-primary);
         color: var(--color-white);
       }
-    }
-
-    .cta {
-      background-color: var(--color-primary);
-      color: var(--color-white);
     }
   }
 
