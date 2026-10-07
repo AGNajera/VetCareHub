@@ -84,18 +84,25 @@ const images = [
 
 <script>
   const carrusel = document.querySelector<HTMLElement>(".carrusel");
-  if (carrusel) {
+  const marco = carrusel?.querySelector<HTMLElement>(".images");
+  if (carrusel && marco) {
     const images = [...carrusel.querySelectorAll<SVGSVGElement>(".image")];
     const captions = [
       ...carrusel.querySelectorAll<HTMLParagraphElement>(".caption"),
     ];
-    const dots = [...document.querySelectorAll<HTMLButtonElement>(".dot")];
+    const dots = [...carrusel.querySelectorAll<HTMLButtonElement>(".dot")];
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    // En pantallas táctiles no hay hover: las ilustraciones se animan solas (lo hace el CSS
+    // con data-tactil) y el perrito camina en cuanto entra su imagen
+    const tactil = window.matchMedia("(hover: none)").matches;
     let current = 0;
     let timer = 0;
-    const COUNT_IMAGES = 3000;
+    let fuera = false;
+    const INTERVALO = 3000;
+    // Distancia mínima en px para que un deslizamiento cuente como cambio de imagen
+    const DESLIZAR = 40;
 
     const show = (index: number) => {
       current = (index + images.length) % images.length;
@@ -108,48 +115,92 @@ const images = [
       );
       // Se reinicia solo en la imagen que entra, así la que sale no brinca durante el fade
       images[current].classList.remove("recorrido");
+      if (tactil) {
+        // Leer la medida obliga al navegador a notar que la clase se quitó; sin esto
+        // quitarla y ponerla seguido no reinicia la animación
+        images[current].getBoundingClientRect();
+        images[current].classList.add("recorrido");
+      }
       dots.forEach((dot, i) =>
         dot.setAttribute("aria-current", String(i === current)),
       );
     };
 
-    // Avance automático cada 6s. Cuando el mouse está en el carrusel se pausa la animación.
+    // Avance automático cada 3s. Se pausa con el mouse encima, con el foco dentro y
+    // cuando el carrusel no está en pantalla
     function start() {
-      if (reduceMotion) return;
+      if (reduceMotion || fuera) return;
       stop();
-      timer = window.setInterval(() => show(current + 1), COUNT_IMAGES);
+      timer = window.setInterval(() => show(current + 1), INTERVALO);
     }
 
     const stop = () => window.clearInterval(timer);
 
-    carrusel.querySelector(".prev")?.addEventListener("click", () => {
-      show(current - 1);
+    const cambiar = (index: number) => {
+      show(index);
       start();
-    });
-    carrusel.querySelector(".next")?.addEventListener("click", () => {
-      show(current + 1);
-      start();
-    });
-    dots.forEach((dot, i) =>
-      dot.addEventListener("click", () => {
-        show(i);
-        start();
-      }),
-    );
+    };
+
+    carrusel
+      .querySelector(".prev")
+      ?.addEventListener("click", () => cambiar(current - 1));
+    carrusel
+      .querySelector(".next")
+      ?.addEventListener("click", () => cambiar(current + 1));
+    dots.forEach((dot, i) => dot.addEventListener("click", () => cambiar(i)));
+
+    // Se usan los eventos de pointer para poder ignorar los toques: en táctil un toque
+    // también dispara mouseenter, pero mouseleave no llega hasta tocar en otro lado y el
+    // avance automático se quedaba detenido
+    const conMouse = (accion: () => void) => (event: PointerEvent) => {
+      if (event.pointerType === "mouse") accion();
+    };
 
     // El recorrido (el perrito caminando a la puerta) se queda terminado aunque el mouse salga,
     // hasta que se cambie de imagen
-    carrusel
-      .querySelector(".images")
-      ?.addEventListener("mouseenter", () =>
-        images[current].classList.add("recorrido"),
-      );
+    marco.addEventListener(
+      "pointerenter",
+      conMouse(() => images[current].classList.add("recorrido")),
+    );
 
-    carrusel.addEventListener("mouseenter", stop);
-    carrusel.addEventListener("mouseleave", start);
+    carrusel.addEventListener("pointerenter", conMouse(stop));
+    carrusel.addEventListener("pointerleave", conMouse(start));
     carrusel.addEventListener("focusin", stop);
     carrusel.addEventListener("focusout", start);
 
+    // Deslizar la imagen con el dedo cambia de imagen. Solo cuenta si el gesto fue más
+    // horizontal que vertical, para no confundirlo con bajar la página
+    let inicioX = 0;
+    let inicioY = 0;
+    marco.addEventListener(
+      "touchstart",
+      (event) => {
+        inicioX = event.changedTouches[0].clientX;
+        inicioY = event.changedTouches[0].clientY;
+      },
+      { passive: true },
+    );
+    marco.addEventListener(
+      "touchend",
+      (event) => {
+        const dx = event.changedTouches[0].clientX - inicioX;
+        const dy = event.changedTouches[0].clientY - inicioY;
+        if (Math.abs(dx) < DESLIZAR || Math.abs(dx) < Math.abs(dy)) return;
+        cambiar(current + (dx < 0 ? 1 : -1));
+      },
+      { passive: true },
+    );
+
+    new IntersectionObserver((entradas) => {
+      fuera = !entradas[entradas.length - 1].isIntersecting;
+      // Con data-fuera el CSS también detiene las ilustraciones en táctil
+      carrusel.toggleAttribute("data-fuera", fuera);
+      if (fuera) stop();
+      else start();
+    }).observe(carrusel);
+
+    carrusel.toggleAttribute("data-tactil", tactil);
+    if (tactil) images[current].classList.add("recorrido");
     start();
   }
 </script>
@@ -179,6 +230,8 @@ const images = [
     height: var(--images-height);
     overflow: hidden;
     border-radius: 24px 24px 0 0;
+    /* El navegador solo se queda con el gesto vertical; el horizontal cambia de imagen */
+    touch-action: pan-y;
     /* Solo la orilla de abajo se desvanece, así la imagen se funde con el fondo de la página */
     mask-image: linear-gradient(
       to bottom,
@@ -206,7 +259,7 @@ const images = [
     }
   }
 
-  /* Animaciones de las partes de cada SVG al hacer hover. Las clases vienen de los archivos en src/assets,
+  /* Animaciones de las partes de cada SVG. Las clases vienen de los archivos en src/assets,
      por eso se usa :global (Astro no les pone su atributo de scope). */
   @media (prefers-reduced-motion: no-preference) {
     .images
@@ -226,7 +279,10 @@ const images = [
       transform-origin: center;
     }
 
-    .images:hover {
+    /* Con mouse se animan al pasar por la imagen. En táctil (data-tactil lo pone el script)
+       se anima sola la imagen activa, mientras el carrusel está en pantalla */
+    .carrusel:not([data-tactil]) .images:hover,
+    .carrusel[data-tactil]:not([data-fuera]) .image.is-active {
       :global(.cola) {
         transform-origin: left bottom;
         animation: menear 0.8s ease-in-out infinite;
@@ -260,6 +316,11 @@ const images = [
 
     .recorrido :global(.perrito) {
       animation: pasear 3s ease-in-out forwards;
+    }
+
+    /* En táctil camina más rápido para llegar a la puerta antes de que cambie la imagen */
+    .carrusel[data-tactil] .recorrido :global(.perrito) {
+      animation-duration: 2s;
     }
   }
 
