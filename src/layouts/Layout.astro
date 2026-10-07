@@ -1,13 +1,18 @@
 ---
-// Cada página puede pasar su título para que la pestaña diga en cuál estás
-const { titulo } = Astro.props;
+// Cada página puede pasar su título para que la pestaña diga en cuál estás,
+// y su descripción, que es el texto que sale en los resultados de Google
+const {
+  titulo,
+  descripcion = "Clínica veterinaria en Tlaltenango, Cuernavaca. Consultas, vacunas, cirugía, laboratorio y estética para perros y gatos en un mismo lugar.",
+} = Astro.props;
 ---
 
 <!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={descripcion} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Las fuentes se piden desde el principio para que el texto no brinque cuando llegan.
          crossorigin es obligatorio en fuentes, sin él el navegador las descarga dos veces -->
