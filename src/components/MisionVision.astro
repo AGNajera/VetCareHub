@@ -45,7 +45,8 @@ const valores = [
         muted
         loop
         playsinline
-        aria-label="Canela, la mascota de la clínica, moviendo la cola"></video>
+        aria-label="Canela, la mascota de la clínica, moviendo la cola"
+      ></video>
       <button
         type="button"
         class="pausa"
@@ -70,14 +71,12 @@ const valores = [
     <div class="valores">
       <h2>Valores</h2>
       <ul>
-        {
-          valores.map(({ nombre, texto }) => (
-            <li>
-              <h3>{nombre}</h3>
-              <p>{texto}</p>
-            </li>
-          ))
-        }
+        {valores.map(({ nombre, texto }) => (
+          <li>
+            <h3>{nombre}</h3>
+            <p>{texto}</p>
+          </li>
+        ))}
       </ul>
     </div>
   </div>
@@ -294,8 +293,8 @@ const valores = [
       background:
         radial-gradient(circle, var(--color-primary) 4.5px, transparent 5px)
           bottom / 10px 10px no-repeat,
-        linear-gradient(var(--color-primary), var(--color-primary)) center /
-          2px 100% no-repeat;
+        linear-gradient(var(--color-primary), var(--color-primary)) center / 2px
+          100% no-repeat;
     }
 
     h2 {
@@ -372,6 +371,10 @@ const valores = [
         "vision"
         "valores";
       padding: 24px 20px;
+    }
+
+    h2 {
+      text-align: center;
     }
 
     .valores ul {
