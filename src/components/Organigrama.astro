@@ -1,0 +1,279 @@
+---
+import Ficha from "./Ficha.astro";
+
+// Datos de mientras: los nombres, los correos y las fotos se cambian cuando llegue la lista.
+// La foto se importa de src/assets y se pone en "foto"; sin ella queda el espacio vacío
+const persona = (puesto: string, usuario: string) => ({
+  nombre: "Nombre Apellido",
+  puesto,
+  correo: `${usuario}@vetcarehub.mx`,
+  foto: null,
+});
+
+const direccion = persona("Dirección general", "direccion");
+
+// El orden importa para el acomodo: las dos primeras áreas cuelgan del tronco, una de
+// cada lado, y las otras tres van en fila al final
+const areas = [
+  {
+    ...persona("Gerencia administrativa", "administracion"),
+    equipo: [
+      persona("Recepción", "recepcion"),
+      persona("Estética y baño", "estetica"),
+    ],
+  },
+  {
+    ...persona("Responsable sanitario", "sanidad"),
+    equipo: [],
+  },
+  {
+    ...persona("Jefatura de medicina general", "medicina"),
+    equipo: [persona("Consulta y vacunación", "consulta")],
+  },
+  {
+    ...persona("Jefatura de cirugía", "cirugia"),
+    equipo: [
+      persona("Anestesia", "anestesia"),
+      persona("Hospitalización", "hospital"),
+    ],
+  },
+  {
+    ...persona("Jefatura de laboratorio", "laboratorio"),
+    equipo: [
+      persona("Análisis clínicos", "analisis"),
+      persona("Rayos X y ultrasonido", "imagen"),
+    ],
+  },
+];
+---
+
+<section class="section organigrama">
+  <h2>Organigrama</h2>
+
+  <div class="arbol">
+    <Ficha {...direccion} />
+
+    <ul class="areas">
+      {
+        areas.map(({ equipo, ...jefe }) => (
+          <li>
+            <Ficha {...jefe} />
+            {equipo.length > 0 && (
+              <ul class="equipo">
+                {equipo.map((miembro) => (
+                  <li>
+                    <Ficha {...miembro} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .organigrama {
+    --ficha: 124px;
+    /* Ancho de la pestaña del correo */
+    --correo: 112px;
+    /* Lo que se recorre a la derecha cada nivel */
+    --sangria: 24px;
+    /* Distancia de la orilla de la ficha a la línea de la que cuelga su equipo */
+    --riel: 12px;
+    --hueco: 16px;
+    /* Altura a la que las líneas llegan a una ficha: la mitad de la foto */
+    --medio: calc(var(--ficha) / 2);
+
+    padding-block: 40px 56px;
+
+    h2 {
+      margin-bottom: 28px;
+    }
+  }
+
+  /* En celular todo el organigrama baja en una sola columna, como un árbol de carpetas.
+     El espacio de la derecha es donde sale el correo */
+  .arbol {
+    width: fit-content;
+    margin-inline: auto;
+    padding-right: var(--correo);
+  }
+
+  .areas,
+  .equipo {
+    /* Mismo ancho que la ficha para que la sangría no la apriete */
+    width: var(--ficha);
+    margin: 0 0 0 var(--sangria);
+    padding: 0;
+    list-style: none;
+  }
+
+  :is(.areas, .equipo) > li {
+    position: relative;
+    padding-top: var(--hueco);
+
+    /* Codo que sale del riel y llega a la ficha */
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: calc(var(--riel) - var(--sangria));
+      width: calc(var(--sangria) - var(--riel));
+      height: calc(var(--hueco) + var(--medio));
+      border-bottom: var(--border);
+      border-left: var(--border);
+      border-bottom-left-radius: 8px;
+    }
+
+    /* El riel sigue hacia abajo mientras falten fichas */
+    &:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: calc(var(--riel) - var(--sangria));
+      border-left: var(--border);
+    }
+  }
+
+  /* Ya cabe el acomodo del boceto: la dirección arriba y de ella baja un tronco; dos áreas
+     cuelgan a los lados y al final el tronco se abre en una barra con las otras tres */
+  @media (min-width: 1024px) {
+    .organigrama {
+      --ficha: 132px;
+      --sangria: 32px;
+      --riel: 14px;
+      /* Tramo de línea entre un nivel y el siguiente */
+      --rayo: 36px;
+      /* Del tronco a las fichas de los lados. Es largo para que el correo de las de la
+         izquierda, al salir, no tape a la de la derecha */
+      --brazo: 76px;
+      /* Lo que baja la ficha de la derecha para no quedar a la altura de la izquierda */
+      --escalon: 120px;
+    }
+
+    .arbol {
+      width: auto;
+      /* Deja lugar al correo de la última columna */
+      padding-inline: 44px;
+
+      > :global(.ficha) {
+        margin-inline: auto;
+      }
+    }
+
+    .areas {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      width: auto;
+      margin-left: 0;
+    }
+
+    /* Una sola columna del ancho de la ficha: así queda centrada la ficha y no el grupo,
+       y el equipo se sale a la derecha con su sangría */
+    .areas > li {
+      display: grid;
+      grid-template-columns: var(--ficha);
+      align-content: start;
+
+      /* Aquí las líneas son rectas: se quita el codo */
+      &::before {
+        border: 0;
+        border-radius: 0;
+        background-color: var(--color-primary);
+      }
+    }
+
+    /* Área de la izquierda. Ocupa la mitad, así su orilla derecha es el centro: ahí va el tronco */
+    .areas > li:nth-child(1) {
+      grid-area: 1 / 1 / auto / span 3;
+      justify-content: end;
+      padding: var(--rayo) var(--brazo) var(--rayo) 0;
+
+      &::before {
+        top: calc(var(--rayo) + var(--medio));
+        right: 0;
+        left: auto;
+        width: var(--brazo);
+        height: 2px;
+      }
+
+      /* El tronco */
+      &::after {
+        right: -1px;
+        left: auto;
+      }
+    }
+
+    /* Área de la derecha */
+    .areas > li:nth-child(2) {
+      grid-area: 1 / 4 / auto / span 3;
+      justify-content: start;
+      padding: calc(var(--rayo) + var(--escalon)) 0 var(--rayo) var(--brazo);
+
+      &::before {
+        top: calc(var(--rayo) + var(--escalon) + var(--medio));
+        left: 0;
+        width: var(--brazo);
+        height: 2px;
+      }
+
+      &::after {
+        content: none;
+      }
+    }
+
+    /* Las tres de abajo: la barra pasa a un --rayo de la orilla y de ella baja una línea a cada ficha */
+    .areas > li:nth-child(n + 3) {
+      grid-row: 2;
+      grid-column: span 2;
+      justify-content: center;
+      padding-top: calc(var(--rayo) * 2);
+
+      &::before {
+        top: var(--rayo);
+        left: calc(50% - 1px);
+        width: 2px;
+        height: var(--rayo);
+      }
+
+      &::after {
+        content: "";
+        position: absolute;
+        top: var(--rayo);
+        right: 0;
+        bottom: auto;
+        left: 0;
+        border-top: var(--border);
+        border-left: 0;
+      }
+    }
+
+    /* La barra empieza y termina en el centro de las fichas de las orillas */
+    .areas > li:nth-child(3)::after {
+      left: calc(50% - 1px);
+    }
+
+    .areas > li:nth-child(5)::after {
+      right: calc(50% - 1px);
+    }
+
+    /* La de en medio queda debajo del tronco: su línea sube hasta él y el punto marca el cruce */
+    .areas > li:nth-child(4) {
+      background: radial-gradient(
+          circle,
+          var(--color-primary) 4.5px,
+          transparent 5px
+        )
+        center calc(var(--rayo) - 4px) / 10px 10px no-repeat;
+
+      &::before {
+        top: 0;
+        height: calc(var(--rayo) * 2);
+      }
+    }
+  }
+</style>
