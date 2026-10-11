@@ -40,7 +40,8 @@ const [usuario, dominio] = correo.split("@");
 </article>
 
 <style>
-  /* Las medidas (--ficha, --correo) las pone el organigrama */
+  /* Las medidas (--ficha, --correo) las pone el organigrama, que también puede achicar
+     la letra con --letra-nombre y --letra-puesto */
   .ficha {
     position: relative;
     /* Para que el correo se pueda esconder detrás de la tarjeta sin irse detrás de la página */
@@ -62,7 +63,7 @@ const [usuario, dominio] = correo.split("@");
       margin: 0;
       padding: 7px 6px;
       font-family: var(--font-bold);
-      font-size: 0.95rem;
+      font-size: var(--letra-nombre, 0.95rem);
       line-height: 1.2;
       text-align: center;
     }
@@ -101,7 +102,7 @@ const [usuario, dominio] = correo.split("@");
     border-radius: 0 0 10px 10px;
     background-color: var(--color-primary);
     color: var(--color-white);
-    font-size: 0.85rem;
+    font-size: var(--letra-puesto, 0.85rem);
     line-height: 1.2;
     text-align: center;
   }
