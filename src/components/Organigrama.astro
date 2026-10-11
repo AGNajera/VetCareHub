@@ -1,19 +1,37 @@
 ---
 import Ficha from "./Ficha.astro";
+import fotoAngelG from "../assets/img/AngelG.webp";
+import fotoAngelIsmael from "../assets/img/AngelIsmael.webp";
+import fotoAzenet from "../assets/img/Azenet.webp";
+import fotoEduardo from "../assets/img/Eduardo.webp";
+import fotoEnrique from "../assets/img/Enrique.webp";
+import fotoEros from "../assets/img/Eros.webp";
+import fotoJuan from "../assets/img/Juan.webp";
+import fotoLuis from "../assets/img/Luis.webp";
+import fotoMarcus from "../assets/img/Marcus.webp";
+import fotoMariaF from "../assets/img/MariaF.webp";
+import fotoNico from "../assets/img/Nico.webp";
+import fotoRoman from "../assets/img/Roman.webp";
 
-// Las fotos son de mientras: se cambian cuando lleguen. El correo es apellido.nombre.
-// La foto se importa de src/assets y se pone en "foto"; sin ella queda el espacio vacío
-const persona = (nombre: string, puesto: string, usuario: string) => ({
+// El correo es apellido.nombre. Las fotos están en src/assets/img, ya recortadas en
+// cuadro; a quien todavía no tiene se le deja el espacio vacío
+const persona = (
+  nombre: string,
+  puesto: string,
+  usuario: string,
+  foto: ImageMetadata | null = null,
+) => ({
   nombre,
   puesto,
   correo: `${usuario}@vetcarehub.mx`,
-  foto: null,
+  foto,
 });
 
 const direccion = persona(
   "Ángel Emiliano García Nájera",
   "Gerencia general",
   "garcia.angel",
+  fotoAngelG,
 );
 
 // El orden importa para el acomodo: las dos primeras áreas cuelgan del tronco, una de
@@ -24,10 +42,21 @@ const areas = [
       "María Fernanda Velázquez Miranda",
       "Subgerencia",
       "velazquez.maria",
+      fotoMariaF,
     ),
     equipo: [
-      persona("Juan Eduardo Ocampo Castillo", "Recepción", "ocampo.juan"),
-      persona("Román Gutiérrez Ocampo", "Estética y baño", "gutierrez.roman"),
+      persona(
+        "Juan Eduardo Ocampo Castillo",
+        "Recepción",
+        "ocampo.juan",
+        fotoJuan,
+      ),
+      persona(
+        "Román Gutiérrez Ocampo",
+        "Estética y baño",
+        "gutierrez.roman",
+        fotoRoman,
+      ),
     ],
   },
   {
@@ -38,9 +67,9 @@ const areas = [
     ),
     equipo: [
       persona(
-        "Marcos Arif Hernández Ostos",
+        "Eder Alyarimi Martínez Silva",
         "Limpieza y desinfección",
-        "hernandez.marcos",
+        "martinez.eder",
       ),
     ],
   },
@@ -49,16 +78,37 @@ const areas = [
       "Abraham Enrique Becerril Téllez",
       "Jefatura de medicina general",
       "becerril.abraham",
+      fotoEnrique,
     ),
     equipo: [
-      persona("Luis Arturo Joaquín Landa", "Consulta y vacunación", "joaquin.luis"),
+      persona(
+        "Luis Arturo Joaquín Landa",
+        "Consulta y vacunación",
+        "joaquin.luis",
+        fotoLuis,
+      ),
     ],
   },
   {
-    ...persona("Ángel Ismael Flores Flores", "Jefatura de cirugía", "flores.angel"),
+    ...persona(
+      "Ángel Ismael Flores Flores",
+      "Jefatura de cirugía",
+      "flores.angel",
+      fotoAngelIsmael,
+    ),
     equipo: [
-      persona("Eder Alyarimi Martínez Silva", "Anestesia", "martinez.eder"),
-      persona("Nicolás Giles Calva", "Hospitalización", "giles.nicolas"),
+      persona(
+        "Marcus Arif Hernández Ostos",
+        "Anestesia",
+        "hernandez.marcus",
+        fotoMarcus,
+      ),
+      persona(
+        "Nicolás Giles Calva",
+        "Hospitalización",
+        "giles.nicolas",
+        fotoNico,
+      ),
     ],
   },
   {
@@ -66,10 +116,21 @@ const areas = [
       "Eduardo García Harrison",
       "Jefatura de laboratorio",
       "garcia.eduardo",
+      fotoEduardo,
     ),
     equipo: [
-      persona("Eros Ramsés Román Tapia", "Análisis e imagen", "roman.eros"),
-      persona("Azeneth García García", "Lavado de material", "garcia.azeneth"),
+      persona(
+        "Eros Ramsés Román Tapia",
+        "Análisis e imagen",
+        "roman.eros",
+        fotoEros,
+      ),
+      persona(
+        "Azeneth García García",
+        "Lavado de material",
+        "garcia.azeneth",
+        fotoAzenet,
+      ),
     ],
   },
 ];
