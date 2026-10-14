@@ -12,405 +12,406 @@ import fotoMarcus from "../assets/img/Marcus.webp";
 import fotoMariaF from "../assets/img/MariaF.webp";
 import fotoNico from "../assets/img/Nico.webp";
 import fotoRoman from "../assets/img/Roman.webp";
+import fotoEder from "../assets/img/Eder.webp";
 
 // El correo es apellido.nombre. Las fotos están en src/assets/img, ya recortadas en
 // cuadro; a quien todavía no tiene se le deja el espacio vacío
 const persona = (
-  nombre: string,
-  puesto: string,
-  usuario: string,
-  foto: ImageMetadata | null = null,
+    nombre: string,
+    puesto: string,
+    usuario: string,
+    foto: ImageMetadata | null = null,
 ) => ({
-  nombre,
-  puesto,
-  correo: `${usuario}@vetcarehub.mx`,
-  foto,
+    nombre,
+    puesto,
+    correo: `${usuario}@vetcarehub.mx`,
+    foto,
 });
 
 const direccion = persona(
-  "Ángel Emiliano García Nájera",
-  "Gerencia general",
-  "garcia.angel",
-  fotoAngelG,
+    "Ángel Emiliano García Nájera",
+    "Gerencia general",
+    "garcia.angel",
+    fotoAngelG,
 );
 
 // El orden importa para el acomodo: las dos primeras áreas cuelgan del tronco, una de
 // cada lado, y las otras tres van en fila al final
 const areas = [
-  {
-    ...persona(
-      "María Fernanda Velázquez Miranda",
-      "Subgerencia",
-      "velazquez.maria",
-      fotoMariaF,
-    ),
-    equipo: [
-      persona(
-        "Juan Eduardo Ocampo Castillo",
-        "Recepción",
-        "ocampo.juan",
-        fotoJuan,
-      ),
-      persona(
-        "Román Gutiérrez Ocampo",
-        "Estética y baño",
-        "gutierrez.roman",
-        fotoRoman,
-      ),
-    ],
-  },
-  {
-    ...persona(
-      "María del Carmen Barajas Galicia",
-      "Responsable sanitario",
-      "barajas.maria",
-    ),
-    equipo: [
-      persona(
-        "Eder Alyarimi Martínez Silva",
-        "Limpieza y desinfección",
-        "martinez.eder",
-      ),
-    ],
-  },
-  {
-    ...persona(
-      "Abraham Enrique Becerril Téllez",
-      "Jefatura de medicina general",
-      "becerril.abraham",
-      fotoEnrique,
-    ),
-    equipo: [
-      persona(
-        "Luis Arturo Joaquín Landa",
-        "Consulta y vacunación",
-        "joaquin.luis",
-        fotoLuis,
-      ),
-    ],
-  },
-  {
-    ...persona(
-      "Ángel Ismael Flores Flores",
-      "Jefatura de cirugía",
-      "flores.angel",
-      fotoAngelIsmael,
-    ),
-    equipo: [
-      persona(
-        "Marcus Arif Hernández Ostos",
-        "Anestesia",
-        "hernandez.marcus",
-        fotoMarcus,
-      ),
-      persona(
-        "Nicolás Giles Calva",
-        "Hospitalización",
-        "giles.nicolas",
-        fotoNico,
-      ),
-    ],
-  },
-  {
-    ...persona(
-      "Eduardo García Harrison",
-      "Jefatura de laboratorio",
-      "garcia.eduardo",
-      fotoEduardo,
-    ),
-    equipo: [
-      persona(
-        "Eros Ramsés Román Tapia",
-        "Análisis e imagen",
-        "roman.eros",
-        fotoEros,
-      ),
-      persona(
-        "Azeneth García García",
-        "Lavado de material",
-        "garcia.azeneth",
-        fotoAzenet,
-      ),
-    ],
-  },
+    {
+        ...persona(
+            "María Fernanda Velázquez Miranda",
+            "Subgerencia",
+            "velazquez.maria",
+            fotoMariaF,
+        ),
+        equipo: [
+            persona(
+                "Juan Eduardo Ocampo Castillo",
+                "Recepción",
+                "ocampo.juan",
+                fotoJuan,
+            ),
+            persona(
+                "Román Gutiérrez Ocampo",
+                "Estética y baño",
+                "gutierrez.roman",
+                fotoRoman,
+            ),
+        ],
+    },
+    {
+        ...persona(
+            "María del Carmen Barajas Galicia",
+            "Responsable sanitario",
+            "barajas.maria",
+        ),
+        equipo: [
+            persona(
+                "Eder Alyarimi Martínez Silva",
+                "Limpieza y desinfección",
+                "martinez.eder",
+                fotoEder,
+            ),
+        ],
+    },
+    {
+        ...persona(
+            "Abraham Enrique Becerril Téllez",
+            "Jefatura de medicina general",
+            "becerril.abraham",
+            fotoEnrique,
+        ),
+        equipo: [
+            persona(
+                "Luis Arturo Joaquín Landa",
+                "Consulta y vacunación",
+                "joaquin.luis",
+                fotoLuis,
+            ),
+        ],
+    },
+    {
+        ...persona(
+            "Ángel Ismael Flores Flores",
+            "Jefatura de cirugía",
+            "flores.angel",
+            fotoAngelIsmael,
+        ),
+        equipo: [
+            persona(
+                "Marcus Arif Hernández Ostos",
+                "Anestesia",
+                "hernandez.marcus",
+                fotoMarcus,
+            ),
+            persona(
+                "Nicolás Giles Calva",
+                "Hospitalización",
+                "giles.nicolas",
+                fotoNico,
+            ),
+        ],
+    },
+    {
+        ...persona(
+            "Eduardo García Harrison",
+            "Jefatura de laboratorio",
+            "garcia.eduardo",
+            fotoEduardo,
+        ),
+        equipo: [
+            persona(
+                "Eros Ramsés Román Tapia",
+                "Análisis e imagen",
+                "roman.eros",
+                fotoEros,
+            ),
+            persona(
+                "Azeneth García García",
+                "Lavado de material",
+                "garcia.azeneth",
+                fotoAzenet,
+            ),
+        ],
+    },
 ];
 ---
 
 <section class="section organigrama">
-  <h2>Organigrama</h2>
+    <h2>Organigrama</h2>
 
-  <div class="arbol">
-    <Ficha {...direccion} />
+    <div class="arbol">
+        <Ficha {...direccion} />
 
-    <ul class="areas">
-      {
-        areas.map(({ equipo, ...jefe }) => (
-          <li>
-            <Ficha {...jefe} />
-            {equipo.length > 0 && (
-              <ul class="equipo">
-                {equipo.map((miembro) => (
-                  <li>
-                    <Ficha {...miembro} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))
-      }
-    </ul>
-  </div>
+        <ul class="areas">
+            {areas.map(({ equipo, ...jefe }) => (
+                <li>
+                    <Ficha {...jefe} />
+                    {equipo.length > 0 && (
+                        <ul class="equipo">
+                            {equipo.map((miembro) => (
+                                <li>
+                                    <Ficha {...miembro} />
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </li>
+            ))}
+        </ul>
+    </div>
 </section>
 
 <style>
-  .organigrama {
-    --ficha: 124px;
-    /* Las fichas de los equipos van un poco más chicas que las de sus jefes */
-    --ficha-chica: 104px;
-    /* Ancho de la pestaña del correo */
-    --correo: 112px;
-    /* Lo que se recorre a la derecha cada nivel */
-    --sangria: 24px;
-    /* Distancia de la orilla de la ficha a la línea de la que cuelga su equipo */
-    --riel: 12px;
-    --hueco: 16px;
-    /* Altura a la que las líneas llegan a una ficha: la mitad de la foto */
-    --medio: calc(var(--ficha) / 2);
-
-    padding-block: 40px 56px;
-
-    h2 {
-      margin-bottom: 28px;
-    }
-  }
-
-  /* En celular todo el organigrama baja en una sola columna, como un árbol de carpetas.
-     El espacio de la derecha es donde sale el correo */
-  .arbol {
-    width: fit-content;
-    margin-inline: auto;
-    padding-right: var(--correo);
-  }
-
-  .areas,
-  .equipo {
-    /* Mismo ancho que la ficha para que la sangría no la apriete */
-    width: var(--ficha);
-    margin: 0 0 0 var(--sangria);
-    padding: 0;
-    list-style: none;
-  }
-
-  .equipo {
-    --ficha: var(--ficha-chica);
-    /* Se vuelve a calcular aquí porque el de arriba ya trae el ancho grande */
-    --medio: calc(var(--ficha) / 2);
-    --letra-nombre: 0.82rem;
-    --letra-puesto: 0.76rem;
-  }
-
-  :is(.areas, .equipo) > li {
-    position: relative;
-    padding-top: var(--hueco);
-
-    /* Codo que sale del riel y llega a la ficha */
-    &::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: calc(var(--riel) - var(--sangria));
-      width: calc(var(--sangria) - var(--riel));
-      height: calc(var(--hueco) + var(--medio));
-      border-bottom: var(--border);
-      border-left: var(--border);
-      border-bottom-left-radius: 8px;
-    }
-
-    /* El riel sigue hacia abajo mientras falten fichas */
-    &:not(:last-child)::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: calc(var(--riel) - var(--sangria));
-      border-left: var(--border);
-    }
-  }
-
-  /* Ya cabe el acomodo del boceto: la dirección arriba y de ella baja un tronco; dos áreas
-     cuelgan a los lados y al final el tronco se abre en una barra con las otras tres */
-  @media (min-width: 1024px) {
     .organigrama {
-      --ficha: 132px;
-      --ficha-chica: 112px;
-      /* Ancho de la ficha del jefe: dentro de .equipo --ficha ya es la chica */
-      --jefe: var(--ficha);
-      /* Tramo de línea entre un nivel y el siguiente */
-      --rayo: 36px;
-      /* Del tronco a las fichas de los lados. Es largo para que el correo de las de la
-         izquierda, al salir, no tape a la de la derecha */
-      --brazo: 76px;
-      /* Lo que baja la ficha de la derecha para no quedar a la altura de la izquierda */
-      --escalon: 120px;
-      /* Lo que se aleja de la ficha la línea que la atraviesa antes de bajar a su equipo */
-      --salida: 28px;
+        --ficha: 124px;
+        /* Las fichas de los equipos van un poco más chicas que las de sus jefes */
+        --ficha-chica: 104px;
+        /* Ancho de la pestaña del correo */
+        --correo: 112px;
+        /* Lo que se recorre a la derecha cada nivel */
+        --sangria: 24px;
+        /* Distancia de la orilla de la ficha a la línea de la que cuelga su equipo */
+        --riel: 12px;
+        --hueco: 16px;
+        /* Altura a la que las líneas llegan a una ficha: la mitad de la foto */
+        --medio: calc(var(--ficha) / 2);
+
+        padding-block: 40px 56px;
+
+        h2 {
+            margin-bottom: 28px;
+        }
     }
 
+    /* En celular todo el organigrama baja en una sola columna, como un árbol de carpetas.
+       El espacio de la derecha es donde sale el correo */
     .arbol {
-      width: auto;
-      /* Deja lugar al correo del equipo de la última columna, que es el que más se sale */
-      padding-inline: 92px;
-
-      > :global(.ficha) {
+        width: fit-content;
         margin-inline: auto;
-      }
+        padding-right: var(--correo);
     }
 
-    .areas {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      width: auto;
-      margin-left: 0;
+    .areas,
+    .equipo {
+        /* Mismo ancho que la ficha para que la sangría no la apriete */
+        width: var(--ficha);
+        margin: 0 0 0 var(--sangria);
+        padding: 0;
+        list-style: none;
     }
 
-    /* Una sola columna del ancho de la ficha: así queda centrada la ficha y no el grupo.
-       Los dos renglones (ficha y equipo) van declarados para poder acomodar líneas
-       contra el renglón de la ficha */
-    .areas > li {
-      display: grid;
-      grid-template: auto auto / var(--ficha);
-      align-content: start;
+    .equipo {
+        --ficha: var(--ficha-chica);
+        /* Se vuelve a calcular aquí porque el de arriba ya trae el ancho grande */
+        --medio: calc(var(--ficha) / 2);
+        --letra-nombre: 0.82rem;
+        --letra-puesto: 0.76rem;
     }
 
-    /* Las dos áreas de los lados. Como en el boceto, la línea que viene del tronco pasa
-       por detrás de la ficha, sale por el otro lado y baja al equipo, que queda metido
-       debajo de su jefe. El ::before se acomoda contra el renglón de la ficha: empieza a
-       media foto y termina donde empieza el equipo, mida lo que mida el nombre */
-    .areas > li:nth-child(-n + 2)::before {
-      grid-area: 1 / 1 / 2 / 2;
-      top: var(--medio);
-      bottom: 0;
-      width: auto;
-      height: auto;
-      border: 0;
-      border-top: var(--border);
+    :is(.areas, .equipo) > li {
+        position: relative;
+        padding-top: var(--hueco);
+
+        /* Codo que sale del riel y llega a la ficha */
+        &::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: calc(var(--riel) - var(--sangria));
+            width: calc(var(--sangria) - var(--riel));
+            height: calc(var(--hueco) + var(--medio));
+            border-bottom: var(--border);
+            border-left: var(--border);
+            border-bottom-left-radius: 8px;
+        }
+
+        /* El riel sigue hacia abajo mientras falten fichas */
+        &:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: calc(var(--riel) - var(--sangria));
+            border-left: var(--border);
+        }
     }
 
-    /* Área de la izquierda. Ocupa la mitad, así su orilla derecha es el centro: ahí va el tronco */
-    .areas > li:nth-child(1) {
-      grid-area: 1 / 1 / auto / span 3;
-      justify-content: end;
-      padding: var(--rayo) var(--brazo) var(--rayo) 0;
+    /* Ya cabe el acomodo del boceto: la dirección arriba y de ella baja un tronco; dos áreas
+       cuelgan a los lados y al final el tronco se abre en una barra con las otras tres */
+    @media (min-width: 1024px) {
+        .organigrama {
+            --ficha: 132px;
+            --ficha-chica: 112px;
+            /* Ancho de la ficha del jefe: dentro de .equipo --ficha ya es la chica */
+            --jefe: var(--ficha);
+            /* Tramo de línea entre un nivel y el siguiente */
+            --rayo: 36px;
+            /* Del tronco a las fichas de los lados. Es largo para que el correo de las de la
+           izquierda, al salir, no tape a la de la derecha */
+            --brazo: 76px;
+            /* Lo que baja la ficha de la derecha para no quedar a la altura de la izquierda */
+            --escalon: 120px;
+            /* Lo que se aleja de la ficha la línea que la atraviesa antes de bajar a su equipo */
+            --salida: 28px;
+        }
 
-      &::before {
-        right: calc(var(--brazo) * -1);
-        left: calc(var(--salida) * -1);
-        border-left: var(--border);
-        border-radius: 8px 0 0;
-      }
+        .arbol {
+            width: auto;
+            /* Deja lugar al correo del equipo de la última columna, que es el que más se sale */
+            padding-inline: 92px;
 
-      /* El tronco */
-      &::after {
-        right: -1px;
-        left: auto;
-      }
+            > :global(.ficha) {
+                margin-inline: auto;
+            }
+        }
 
-      /* El equipo se alinea con la orilla derecha de su jefe y el riel queda afuera */
-      > .equipo {
-        --sangria: calc(var(--jefe) - var(--ficha));
-        --riel: calc(var(--salida) * -1);
-      }
+        .areas {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            width: auto;
+            margin-left: 0;
+        }
+
+        /* Una sola columna del ancho de la ficha: así queda centrada la ficha y no el grupo.
+         Los dos renglones (ficha y equipo) van declarados para poder acomodar líneas
+         contra el renglón de la ficha */
+        .areas > li {
+            display: grid;
+            grid-template: auto auto / var(--ficha);
+            align-content: start;
+        }
+
+        /* Las dos áreas de los lados. Como en el boceto, la línea que viene del tronco pasa
+         por detrás de la ficha, sale por el otro lado y baja al equipo, que queda metido
+         debajo de su jefe. El ::before se acomoda contra el renglón de la ficha: empieza a
+         media foto y termina donde empieza el equipo, mida lo que mida el nombre */
+        .areas > li:nth-child(-n + 2)::before {
+            grid-area: 1 / 1 / 2 / 2;
+            top: var(--medio);
+            bottom: 0;
+            width: auto;
+            height: auto;
+            border: 0;
+            border-top: var(--border);
+        }
+
+        /* Área de la izquierda. Ocupa la mitad, así su orilla derecha es el centro: ahí va el tronco */
+        .areas > li:nth-child(1) {
+            grid-area: 1 / 1 / auto / span 3;
+            justify-content: end;
+            padding: var(--rayo) var(--brazo) var(--rayo) 0;
+
+            &::before {
+                right: calc(var(--brazo) * -1);
+                left: calc(var(--salida) * -1);
+                border-left: var(--border);
+                border-radius: 8px 0 0;
+            }
+
+            /* El tronco */
+            &::after {
+                right: -1px;
+                left: auto;
+            }
+
+            /* El equipo se alinea con la orilla derecha de su jefe y el riel queda afuera */
+            > .equipo {
+                --sangria: calc(var(--jefe) - var(--ficha));
+                --riel: calc(var(--salida) * -1);
+            }
+        }
+
+        /* Área de la derecha: lo mismo, en espejo */
+        .areas > li:nth-child(2) {
+            grid-area: 1 / 4 / auto / span 3;
+            justify-content: start;
+            padding: calc(var(--rayo) + var(--escalon)) 0 var(--rayo)
+                var(--brazo);
+
+            &::before {
+                right: calc(var(--salida) * -1);
+                left: calc(var(--brazo) * -1);
+                border-right: var(--border);
+                border-radius: 0 8px 0 0;
+            }
+
+            &::after {
+                content: none;
+            }
+
+            > .equipo {
+                --sangria: 0px;
+            }
+
+            /* El codo llega a la ficha por la derecha */
+            > .equipo > li::before {
+                right: calc(var(--ficha) - var(--jefe) - var(--salida));
+                left: var(--ficha);
+                width: auto;
+                border-right: var(--border);
+                border-left: 0;
+                border-radius: 0 0 8px;
+            }
+
+            > .equipo > li:not(:last-child)::after {
+                right: calc(var(--ficha) - var(--jefe) - var(--salida));
+                left: auto;
+                border-right: var(--border);
+                border-left: 0;
+            }
+        }
+
+        /* Las tres de abajo: la barra pasa a un --rayo de la orilla y de ella baja una línea a cada ficha */
+        .areas > li:nth-child(n + 3) {
+            grid-row: 2;
+            grid-column: span 2;
+            justify-content: center;
+            padding-top: calc(var(--rayo) * 2);
+
+            /* Aquí la línea es recta: se quita el codo */
+            &::before {
+                top: var(--rayo);
+                left: calc(50% - 1px);
+                width: 2px;
+                height: var(--rayo);
+                border: 0;
+                border-radius: 0;
+                background-color: var(--color-primary);
+            }
+
+            /* El riel baja del centro del puesto y el equipo cuelga a la derecha */
+            > .equipo {
+                --riel: calc(var(--jefe) / 2 - 1px);
+                --sangria: calc(var(--jefe) / 2 + 18px);
+            }
+
+            &::after {
+                content: "";
+                position: absolute;
+                top: var(--rayo);
+                right: 0;
+                bottom: auto;
+                left: 0;
+                border-top: var(--border);
+                border-left: 0;
+            }
+        }
+
+        /* La barra empieza y termina en el centro de las fichas de las orillas */
+        .areas > li:nth-child(3)::after {
+            left: calc(50% - 1px);
+        }
+
+        .areas > li:nth-child(5)::after {
+            right: calc(50% - 1px);
+        }
+
+        /* La de en medio queda debajo del tronco: su línea sube hasta él */
+        .areas > li:nth-child(4)::before {
+            top: 0;
+            height: calc(var(--rayo) * 2);
+        }
     }
-
-    /* Área de la derecha: lo mismo, en espejo */
-    .areas > li:nth-child(2) {
-      grid-area: 1 / 4 / auto / span 3;
-      justify-content: start;
-      padding: calc(var(--rayo) + var(--escalon)) 0 var(--rayo) var(--brazo);
-
-      &::before {
-        right: calc(var(--salida) * -1);
-        left: calc(var(--brazo) * -1);
-        border-right: var(--border);
-        border-radius: 0 8px 0 0;
-      }
-
-      &::after {
-        content: none;
-      }
-
-      > .equipo {
-        --sangria: 0px;
-      }
-
-      /* El codo llega a la ficha por la derecha */
-      > .equipo > li::before {
-        right: calc(var(--ficha) - var(--jefe) - var(--salida));
-        left: var(--ficha);
-        width: auto;
-        border-right: var(--border);
-        border-left: 0;
-        border-radius: 0 0 8px;
-      }
-
-      > .equipo > li:not(:last-child)::after {
-        right: calc(var(--ficha) - var(--jefe) - var(--salida));
-        left: auto;
-        border-right: var(--border);
-        border-left: 0;
-      }
-    }
-
-    /* Las tres de abajo: la barra pasa a un --rayo de la orilla y de ella baja una línea a cada ficha */
-    .areas > li:nth-child(n + 3) {
-      grid-row: 2;
-      grid-column: span 2;
-      justify-content: center;
-      padding-top: calc(var(--rayo) * 2);
-
-      /* Aquí la línea es recta: se quita el codo */
-      &::before {
-        top: var(--rayo);
-        left: calc(50% - 1px);
-        width: 2px;
-        height: var(--rayo);
-        border: 0;
-        border-radius: 0;
-        background-color: var(--color-primary);
-      }
-
-      /* El riel baja del centro del puesto y el equipo cuelga a la derecha */
-      > .equipo {
-        --riel: calc(var(--jefe) / 2 - 1px);
-        --sangria: calc(var(--jefe) / 2 + 18px);
-      }
-
-      &::after {
-        content: "";
-        position: absolute;
-        top: var(--rayo);
-        right: 0;
-        bottom: auto;
-        left: 0;
-        border-top: var(--border);
-        border-left: 0;
-      }
-    }
-
-    /* La barra empieza y termina en el centro de las fichas de las orillas */
-    .areas > li:nth-child(3)::after {
-      left: calc(50% - 1px);
-    }
-
-    .areas > li:nth-child(5)::after {
-      right: calc(50% - 1px);
-    }
-
-    /* La de en medio queda debajo del tronco: su línea sube hasta él */
-    .areas > li:nth-child(4)::before {
-      top: 0;
-      height: calc(var(--rayo) * 2);
-    }
-  }
 </style>
