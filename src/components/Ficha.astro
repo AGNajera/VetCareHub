@@ -39,6 +39,28 @@ const [usuario, dominio] = correo.split("@");
   </p>
 </article>
 
+<script>
+  // En celular el primer toque solo abre la ficha. Como el correo aparece en ese mismo
+  // toque y cubre la foto, el navegador le pasaba el click al enlace y abría la app de
+  // correo. Por eso, si al tocar la ficha todavía estaba cerrada, ese click no cuenta;
+  // ya abierta, el siguiente toque sí abre el correo. Con el mouse y el teclado no
+  // cambia nada
+  document.querySelectorAll<HTMLElement>(".ficha").forEach((ficha) => {
+    const enlace = ficha.querySelector<HTMLAnchorElement>(".correo a");
+    let estabaCerrada = false;
+
+    ficha.addEventListener("pointerdown", (event) => {
+      estabaCerrada =
+        event.pointerType !== "mouse" && !ficha.matches(":focus-within");
+    });
+
+    enlace?.addEventListener("click", (event) => {
+      if (estabaCerrada) event.preventDefault();
+      estabaCerrada = false;
+    });
+  });
+</script>
+
 <style>
   /* Las medidas (--ficha, --correo) las pone el organigrama, que también puede achicar
      la letra con --letra-nombre y --letra-puesto */
@@ -162,6 +184,44 @@ const [usuario, dominio] = correo.split("@");
       opacity: 1;
       translate: 0 0;
       pointer-events: auto;
+    }
+  }
+
+  /* En celular no hay lugar a los lados, así que el correo sale encima de la foto y la
+     cubre toda. El fondo es menta translúcido con la foto borrosa detrás: se nota que
+     está sobre la foto, pero las orillas de la cara no se cruzan con las letras. Con el
+     60% de menta el texto todavía cumple el contraste mínimo aunque la foto sea negra;
+     con menos ya no */
+  @media (max-width: 1023px) {
+    .correo {
+      /* Encima de la tarjeta, que es donde está la foto */
+      z-index: 1;
+      /* La foto es un cuadrado dentro del borde de 2px de la tarjeta; el correo ocupa
+         ese mismo cuadrado, con las esquinas de arriba redondeadas como las de la tarjeta.
+         Es 2px más bajo para no tapar la línea que separa la foto del nombre */
+      top: 2px;
+      left: 2px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: calc(var(--ficha) - 4px);
+      height: calc(var(--ficha) - 6px);
+      padding: 6px;
+      border: 0;
+      border-radius: 12px 12px 0 0;
+      background-color: color-mix(in srgb, var(--color-mint) 60%, transparent);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      font-size: 0.7rem;
+      line-height: 1.2;
+      text-align: center;
+      /* Cubre la foto entera, así que solo aparece, sin moverse */
+      translate: 0 0;
+
+      span {
+        margin-bottom: 0;
+        font-size: 0.72rem;
+      }
     }
   }
 
