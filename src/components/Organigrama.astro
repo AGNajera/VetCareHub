@@ -66,14 +66,7 @@ const areas = [
             "Responsable sanitario",
             "barajas.maria",
         ),
-        equipo: [
-            persona(
-                "Eder Alyarimi Martínez Silva",
-                "Limpieza y desinfección",
-                "martinez.eder",
-                fotoEder,
-            ),
-        ],
+        equipo: [],
     },
     {
         ...persona(
@@ -88,6 +81,12 @@ const areas = [
                 "Consulta y vacunación",
                 "joaquin.luis",
                 fotoLuis,
+            ),
+            persona(
+                "Eder Alyarimi Martínez Silva",
+                "Limpieza y desinfección",
+                "martinez.eder",
+                fotoEder,
             ),
         ],
     },
@@ -340,6 +339,13 @@ const areas = [
 
             &::after {
                 content: none;
+            }
+
+            /* Sin equipo la línea llega a la ficha y ahí se queda, no tiene a dónde bajar */
+            &:not(:has(.equipo))::before {
+                right: 100%;
+                border-right: 0;
+                border-radius: 0;
             }
 
             > .equipo {
