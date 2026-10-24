@@ -84,19 +84,6 @@ const {
     height: 100%;
   }
 
-  /* Sin el rebote de Safari y de los trackpads en todo el sitio. La página, en los dos
-     sentidos (también en body porque algunos navegadores leen ahí el de la ventana).
-     Lo demás (tablas, carrusel, menús) solo de lado, que además evita el gesto de
-     "página anterior": de arriba a abajo tienen que dejar pasar el scroll a la página */
-  html,
-  body {
-    overscroll-behavior: none;
-  }
-
-  * {
-    overscroll-behavior-x: none;
-  }
-
   html {
     scroll-behavior: smooth;
     /* Evita que el header sticky tape los títulos al navegar con anclas */
