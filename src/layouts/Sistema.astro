@@ -6,6 +6,7 @@ import Layout from "./Layout.astro";
 import Icono, { type NombreIcono } from "../components/sistema/Icono.astro";
 import Logo from "../assets/logo.svg";
 import { nombreRol, type Rol } from "../lib/permisos";
+import { fotoDeCorreo } from "../data/fotos";
 
 // titulo va en la pestaña; encabezado, si se pasa, es el h1 de la página
 const { titulo, encabezado = titulo } = Astro.props;
@@ -19,7 +20,9 @@ const secciones: { href: string; texto: string; icono: NombreIcono }[] = [
 
 const actual = Astro.url.pathname.replace(/\/$/, "");
 const rol = nombreRol[user.role as Rol] ?? user.role;
-// Las iniciales del nombre y el primer apellido, para el círculo de la cuenta
+// La foto del organigrama en el círculo de la cuenta; si no tiene, las iniciales del
+// nombre y el primer apellido
+const foto = fotoDeCorreo(user.email);
 const iniciales = user.name
   .split(" ")
   .filter((_, i, partes) => i === 0 || i === partes.length - 2)
@@ -86,7 +89,15 @@ const iniciales = user.name
           aria-expanded="false"
           aria-controls="menu-cuenta"
         >
-          <span class="iniciales" aria-hidden="true">{iniciales}</span>
+          {
+            foto ? (
+              <img class="avatar" src={foto.src} width="40" height="40" alt="" />
+            ) : (
+              <span class="avatar iniciales" aria-hidden="true">
+                {iniciales}
+              </span>
+            )
+          }
           <span class="datos">
             <span class="nombre">{user.name}</span>
             <span class="rol">{rol}</span>
@@ -276,12 +287,21 @@ const iniciales = user.name
     border-top: var(--border);
   }
 
-  /* Sale hacia arriba del botón, del mismo ancho */
+  /* Sale hacia arriba del botón, del mismo ancho, separado de la línea del sidebar.
+     Al abrir sube un poco desde el nombre */
   .menu {
     position: absolute;
     left: 12px;
     right: 12px;
-    bottom: calc(100% - 4px);
+    bottom: calc(100% + 10px);
+    transform-origin: bottom center;
+    /* allow-discrete deja que display: none espere a que termine el desvanecido al
+       cerrar; @starting-style es de donde parte al abrir */
+    transition:
+      opacity 160ms ease,
+      translate 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      scale 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      display 160ms allow-discrete;
     margin: 0;
     padding: 6px;
     border: var(--border);
@@ -292,6 +312,15 @@ const iniciales = user.name
 
     &[hidden] {
       display: none;
+      opacity: 0;
+      translate: 0 8px;
+      scale: 0.97;
+    }
+
+    @starting-style {
+      opacity: 0;
+      translate: 0 8px;
+      scale: 0.97;
     }
 
     .salir:disabled {
@@ -325,13 +354,17 @@ const iniciales = user.name
     }
   }
 
-  .iniciales {
-    display: grid;
+  .avatar {
     flex-shrink: 0;
-    place-items: center;
     width: 40px;
     height: 40px;
     border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .iniciales {
+    display: grid;
+    place-items: center;
     background-color: var(--color-accent);
     color: var(--color-white);
     font-family: var(--font-bold);
@@ -906,7 +939,8 @@ const iniciales = user.name
 
   @media (prefers-reduced-motion: reduce) {
     .sidebar,
-    .fondo {
+    .fondo,
+    .menu {
       transition: none;
     }
 

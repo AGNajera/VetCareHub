@@ -2,38 +2,10 @@
 import Ficha from "./Ficha.astro";
 import { areas as personas, correoDe, direccion as director } from "../data/equipo";
 import type { Persona } from "../data/equipo";
-import fotoAngelG from "../assets/img/AngelG.webp";
-import fotoAngelIsmael from "../assets/img/AngelIsmael.webp";
-import fotoAzenet from "../assets/img/Azenet.webp";
-import fotoEduardo from "../assets/img/Eduardo.webp";
-import fotoEnrique from "../assets/img/Enrique.webp";
-import fotoEros from "../assets/img/Eros.webp";
-import fotoJuan from "../assets/img/Juan.webp";
-import fotoLuis from "../assets/img/Luis.webp";
-import fotoMarcus from "../assets/img/Marcus.webp";
-import fotoMariaF from "../assets/img/MariaF.webp";
-import fotoNico from "../assets/img/Nico.webp";
-import fotoRoman from "../assets/img/Roman.webp";
-import fotoEder from "../assets/img/Eder.webp";
+import { fotos } from "../data/fotos";
 
-// Las personas están en src/data/equipo.ts. Las fotos están en src/assets/img, ya
-// recortadas en cuadro; a quien todavía no tiene se le deja el espacio vacío
-const fotos: Record<string, ImageMetadata> = {
-    "garcia.angel": fotoAngelG,
-    "velazquez.maria": fotoMariaF,
-    "ocampo.juan": fotoJuan,
-    "gutierrez.roman": fotoRoman,
-    "becerril.abraham": fotoEnrique,
-    "joaquin.luis": fotoLuis,
-    "martinez.eder": fotoEder,
-    "flores.angel": fotoAngelIsmael,
-    "hernandez.marcus": fotoMarcus,
-    "giles.nicolas": fotoNico,
-    "garcia.eduardo": fotoEduardo,
-    "roman.eros": fotoEros,
-    "garcia.azeneth": fotoAzenet,
-};
-
+// Las personas están en src/data/equipo.ts y sus fotos en src/data/fotos.ts; a quien
+// todavía no tiene se le deja el espacio vacío
 const persona = ({ nombre, puesto, usuario }: Persona) => ({
     nombre,
     puesto,

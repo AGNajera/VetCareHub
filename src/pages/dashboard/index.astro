@@ -99,27 +99,8 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     }
   }
 
-  /* La que lleva a otra página se levanta un poco, como una ficha que se puede tomar */
+  /* La que lleva a otra página se ve igual que las demás */
   .tarjeta.enlace {
-    box-shadow: 0 4px 0 var(--color-primary);
-    transition:
-      translate 120ms ease,
-      box-shadow 120ms ease;
-
-    &:hover {
-      translate: 0 -2px;
-      box-shadow: 0 6px 0 var(--color-primary);
-
-      h2 {
-        text-decoration: underline;
-      }
-    }
-
-    &:active {
-      translate: 0 3px;
-      box-shadow: 0 1px 0 var(--color-primary);
-    }
-
     &:focus-visible {
       outline: var(--focus-ring);
       outline-offset: 4px;
@@ -147,11 +128,5 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 
   .nota {
     color: var(--color-accent);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .tarjeta.enlace {
-      transition: none;
-    }
   }
 </style>
