@@ -1,0 +1,90 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { fecha, numero, pesos } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const puedeVer = acciones(user.role, "inventario").includes("ver");
+
+type Producto = {
+  id: string;
+  nombre: string;
+  categoria: string;
+  unidad: string;
+  cantidad: number;
+  stock_minimo: number;
+  precio: string;
+  caducidad: Date | null;
+  proveedor: string | null;
+};
+
+// numeric llega como texto desde pg; se convierte al mostrarlo
+const productos = puedeVer
+  ? (
+      await pool.query<Producto>(
+        `select i.id, i.nombre, i.categoria, i.unidad, i.cantidad, i.stock_minimo, i.precio,
+                i.caducidad, p.nombre as proveedor
+         from inventario i
+         left join proveedores p on p.id = i.proveedor_id
+         order by i.categoria, i.nombre`,
+      )
+    ).rows
+  : [];
+---
+
+<Sistema titulo="Inventario">
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso al inventario.</p>
+    ) : productos.length === 0 ? (
+      <p class="vacio">Todavía no hay productos en el inventario.</p>
+    ) : (
+      <div class="marco-tabla" tabindex="0" role="region" aria-label="Productos del inventario">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th class="numero">Existencias</th>
+              <th class="numero">Mínimo</th>
+              <th class="numero">Precio</th>
+              <th>Caducidad</th>
+              <th>Proveedor</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productos.map((p) => {
+              const agotandose = p.cantidad <= p.stock_minimo;
+              return (
+                <tr>
+                  <td>{p.nombre}</td>
+                  <td class="secundario categoria">{p.categoria}</td>
+                  <td class="numero">{numero.format(p.cantidad)} {p.unidad}</td>
+                  <td class="numero secundario">{numero.format(p.stock_minimo)}</td>
+                  <td class="numero">{pesos.format(Number(p.precio))}</td>
+                  <td class="secundario">{p.caducidad ? fecha.format(p.caducidad) : "—"}</td>
+                  <td class="secundario">{p.proveedor ?? "—"}</td>
+                  <td>
+                    <span class:list={["etiqueta", { alerta: agotandose }]}>
+                      {agotandose ? "Por agotarse" : "Suficiente"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Sistema>
+
+<style>
+  .categoria {
+    text-transform: capitalize;
+  }
+</style>

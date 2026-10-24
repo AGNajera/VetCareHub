@@ -1,0 +1,86 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const puedeVer = acciones(user.role, "proveedores").includes("ver");
+
+type Proveedor = {
+  id: string;
+  nombre: string;
+  contacto: string | null;
+  telefono: string | null;
+  correo: string | null;
+  direccion: string | null;
+  productos: number;
+};
+
+const proveedores = puedeVer
+  ? (
+      await pool.query<Proveedor>(
+        `select p.id, p.nombre, p.contacto, p.telefono, p.correo, p.direccion,
+                count(i.id)::int as productos
+         from proveedores p
+         left join inventario i on i.proveedor_id = p.id
+         group by p.id
+         order by p.nombre`,
+      )
+    ).rows
+  : [];
+---
+
+<Sistema titulo="Proveedores">
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a los proveedores.</p>
+    ) : proveedores.length === 0 ? (
+      <p class="vacio">Todavía no hay proveedores registrados.</p>
+    ) : (
+      <div class="marco-tabla" tabindex="0" role="region" aria-label="Proveedores">
+        <table>
+          <thead>
+            <tr>
+              <th>Proveedor</th>
+              <th>Contacto</th>
+              <th>Teléfono</th>
+              <th>Correo</th>
+              <th>Dirección</th>
+              <th class="numero">Productos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {proveedores.map((p) => (
+              <tr>
+                <td>{p.nombre}</td>
+                <td>{p.contacto ?? "—"}</td>
+                <td class="secundario">
+                  {p.telefono ? <a href={`tel:${p.telefono.replace(/\s/g, "")}`}>{p.telefono}</a> : "—"}
+                </td>
+                <td class="secundario">
+                  {p.correo ? <a href={`mailto:${p.correo}`}>{p.correo}</a> : "—"}
+                </td>
+                <td class="secundario">{p.direccion ?? "—"}</td>
+                <td class="numero">{numero.format(p.productos)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Sistema>
+
+<style>
+  td a {
+    color: inherit;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+</style>

@@ -14,5 +14,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.session = sesion.session;
   }
 
+  // Todo lo que está dentro de /dashboard es para quien inició sesión
+  const enSistema = /^\/dashboard(\/|$)/.test(context.url.pathname);
+  if (enSistema && !context.locals.user) return context.redirect("/login");
+
   return next();
 });

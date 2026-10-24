@@ -11,7 +11,10 @@
     "preview": "astro preview",
     "astro": "astro",
     "cuentas": "tsx --env-file=.env scripts/crear-cuentas.ts",
-    "cuentas:produccion": "tsx --env-file=.env.production scripts/crear-cuentas.ts"
+    "cuentas:produccion": "tsx --env-file=.env.production scripts/crear-cuentas.ts",
+    "db:migrar": "tsx --env-file=.env scripts/sql.ts",
+    "db:migrar:produccion": "tsx --env-file=.env.production scripts/sql.ts",
+    "db:ejemplo": "tsx --env-file=.env scripts/sql.ts --ejemplo"
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.16",
