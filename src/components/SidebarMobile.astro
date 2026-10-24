@@ -1,7 +1,11 @@
 ---
 import Logo from "../assets/logo.svg";
+import AccesoSistema from "./AccesoSistema.astro";
 
-// Inicio y Nosotros son páginas; los demás van al footer, que está en las dos.
+const { estatica } = Astro.props;
+
+// Inicio y Nosotros son páginas; el sistema va justo después (ver Header.astro) y los
+// demás van al footer, que está en las dos.
 // Las rutas llevan / al principio para que también funcionen desde /nosotros
 const enlaces = [
   { href: "/#inicio", texto: "Inicio", ruta: "/" },
@@ -19,11 +23,25 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
 <aside id="sidebar-mobile" class="sidebar" aria-label="Menú" inert>
   <nav>
     {
-      enlaces.map(({ href, texto, ruta }) => (
+      enlaces.slice(0, 2).map(({ href, texto, ruta }) => (
         <a href={href} aria-current={ruta === actual ? "page" : undefined}>
           {texto}
         </a>
       ))
+    }
+    {
+      estatica ? (
+        <AccesoSistema server:defer actual={actual}>
+          <a slot="fallback" href="/login">
+            Acceder al sistema
+          </a>
+        </AccesoSistema>
+      ) : (
+        <AccesoSistema actual={actual} />
+      )
+    }
+    {
+      enlaces.slice(2).map(({ href, texto }) => <a href={href}>{texto}</a>)
     }
   </nav>
 
@@ -67,7 +85,8 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
     display: flex;
     flex-direction: column;
 
-    a {
+    /* :global porque el enlace al sistema lo pinta AccesoSistema.astro */
+    :global(a) {
       padding: 18px 24px;
       border-bottom: var(--border);
       color: var(--color-primary);

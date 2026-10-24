@@ -1,5 +1,7 @@
 ---
 import Ficha from "./Ficha.astro";
+import { areas as personas, correoDe, direccion as director } from "../data/equipo";
+import type { Persona } from "../data/equipo";
 import fotoAngelG from "../assets/img/AngelG.webp";
 import fotoAngelIsmael from "../assets/img/AngelIsmael.webp";
 import fotoAzenet from "../assets/img/Azenet.webp";
@@ -14,127 +16,39 @@ import fotoNico from "../assets/img/Nico.webp";
 import fotoRoman from "../assets/img/Roman.webp";
 import fotoEder from "../assets/img/Eder.webp";
 
-// El correo es apellido.nombre. Las fotos están en src/assets/img, ya recortadas en
-// cuadro; a quien todavía no tiene se le deja el espacio vacío
-const persona = (
-    nombre: string,
-    puesto: string,
-    usuario: string,
-    foto: ImageMetadata | null = null,
-) => ({
+// Las personas están en src/data/equipo.ts. Las fotos están en src/assets/img, ya
+// recortadas en cuadro; a quien todavía no tiene se le deja el espacio vacío
+const fotos: Record<string, ImageMetadata> = {
+    "garcia.angel": fotoAngelG,
+    "velazquez.maria": fotoMariaF,
+    "ocampo.juan": fotoJuan,
+    "gutierrez.roman": fotoRoman,
+    "becerril.abraham": fotoEnrique,
+    "joaquin.luis": fotoLuis,
+    "martinez.eder": fotoEder,
+    "flores.angel": fotoAngelIsmael,
+    "hernandez.marcus": fotoMarcus,
+    "giles.nicolas": fotoNico,
+    "garcia.eduardo": fotoEduardo,
+    "roman.eros": fotoEros,
+    "garcia.azeneth": fotoAzenet,
+};
+
+const persona = ({ nombre, puesto, usuario }: Persona) => ({
     nombre,
     puesto,
-    correo: `${usuario}@vetcarehub.mx`,
-    foto,
+    correo: correoDe(usuario),
+    foto: fotos[usuario] ?? null,
 });
 
-const direccion = persona(
-    "Ángel Emiliano García Nájera",
-    "Gerencia general",
-    "garcia.angel",
-    fotoAngelG,
-);
+const direccion = persona(director);
 
 // El orden importa para el acomodo: las dos primeras áreas cuelgan del tronco, una de
 // cada lado, y las otras tres van en fila al final
-const areas = [
-    {
-        ...persona(
-            "María Fernanda Velázquez Miranda",
-            "Subgerencia",
-            "velazquez.maria",
-            fotoMariaF,
-        ),
-        equipo: [
-            persona(
-                "Juan Eduardo Ocampo Castillo",
-                "Recepción",
-                "ocampo.juan",
-                fotoJuan,
-            ),
-            persona(
-                "Román Gutiérrez Ocampo",
-                "Estética y baño",
-                "gutierrez.roman",
-                fotoRoman,
-            ),
-        ],
-    },
-    {
-        ...persona(
-            "María del Carmen Barajas Galicia",
-            "Responsable sanitario",
-            "barajas.maria",
-        ),
-        equipo: [],
-    },
-    {
-        ...persona(
-            "Abraham Enrique Becerril Téllez",
-            "Jefatura de medicina general",
-            "becerril.abraham",
-            fotoEnrique,
-        ),
-        equipo: [
-            persona(
-                "Luis Arturo Joaquín Landa",
-                "Consulta y vacunación",
-                "joaquin.luis",
-                fotoLuis,
-            ),
-            persona(
-                "Eder Alyarimi Martínez Silva",
-                "Limpieza y desinfección",
-                "martinez.eder",
-                fotoEder,
-            ),
-        ],
-    },
-    {
-        ...persona(
-            "Ángel Ismael Flores Flores",
-            "Jefatura de cirugía",
-            "flores.angel",
-            fotoAngelIsmael,
-        ),
-        equipo: [
-            persona(
-                "Marcus Arif Hernández Ostos",
-                "Anestesia",
-                "hernandez.marcus",
-                fotoMarcus,
-            ),
-            persona(
-                "Nicolás Giles Calva",
-                "Hospitalización",
-                "giles.nicolas",
-                fotoNico,
-            ),
-        ],
-    },
-    {
-        ...persona(
-            "Eduardo García Harrison",
-            "Jefatura de laboratorio",
-            "garcia.eduardo",
-            fotoEduardo,
-        ),
-        equipo: [
-            persona(
-                "Eros Ramsés Román Tapia",
-                "Análisis e imagen",
-                "roman.eros",
-                fotoEros,
-            ),
-            persona(
-                "Azeneth García García",
-                "Lavado de material",
-                "garcia.azeneth",
-                fotoAzenet,
-            ),
-        ],
-    },
-];
+const areas = personas.map(({ equipo, ...jefe }) => ({
+    ...persona(jefe),
+    equipo: equipo.map(persona),
+}));
 ---
 
 <section class="section organigrama">

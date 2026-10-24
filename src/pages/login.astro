@@ -1,0 +1,183 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+
+export const prerender = false;
+
+// Quien ya entró no tiene nada que hacer aquí
+if (Astro.locals.user) return Astro.redirect("/dashboard");
+---
+
+<Layout titulo="Acceder al sistema" descripcion="Acceso al sistema interno de VetCareHub.">
+  <div class="page">
+    <Header />
+    <main>
+      <form class="acceso" novalidate>
+        <h1>Acceder al sistema</h1>
+        <p class="intro">
+          Para el personal de la clínica. Tu cuenta te la da la gerencia.
+        </p>
+
+        <label>
+          Correo
+          <input
+            type="email"
+            name="email"
+            autocomplete="username"
+            placeholder="apellido.nombre@vetcarehub.mx"
+            required
+          />
+        </label>
+
+        <label>
+          Contraseña
+          <input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+
+        <p class="error" role="alert" aria-live="assertive"></p>
+
+        <button type="submit">Entrar</button>
+      </form>
+    </main>
+  </div>
+</Layout>
+
+<script>
+  import { authClient } from "../lib/auth-client";
+
+  const form = document.querySelector<HTMLFormElement>(".acceso");
+  const error = form?.querySelector<HTMLElement>(".error");
+  const boton = form?.querySelector<HTMLButtonElement>("button");
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity() || !error || !boton) return;
+
+    const datos = new FormData(form);
+    error.textContent = "";
+    boton.disabled = true;
+    boton.textContent = "Entrando…";
+
+    const { error: fallo } = await authClient.signIn.email({
+      email: String(datos.get("email")),
+      password: String(datos.get("password")),
+    });
+
+    if (!fallo) {
+      location.assign("/dashboard");
+      return;
+    }
+
+    // El mismo mensaje si el correo no existe o la contraseña está mal, para no revelar
+    // qué correos tienen cuenta
+    error.textContent =
+      fallo.status === 429
+        ? "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
+        : "El correo o la contraseña no son correctos.";
+    boton.disabled = false;
+    boton.textContent = "Entrar";
+  });
+</script>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    font-family: var(--font-body);
+  }
+
+  main {
+    display: grid;
+    flex: 1;
+    place-items: center;
+    padding: 48px 16px;
+  }
+
+  .acceso {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: min(100%, 420px);
+    padding: 32px 28px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--font-bold);
+    font-size: 1.8rem;
+  }
+
+  .intro {
+    margin: -6px 0 4px;
+    line-height: 1.5;
+  }
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--font-bold);
+    font-size: 1.05rem;
+  }
+
+  input {
+    padding: 12px 14px;
+    border: var(--border);
+    border-radius: 8px;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    font-family: var(--font-body);
+    /* 16px o más para que Safari en iPhone no haga zoom al escribir */
+    font-size: 1.05rem;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .error {
+    margin: 0;
+    color: #b42318;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  button {
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 1.15rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: progress;
+    }
+  }
+</style>
