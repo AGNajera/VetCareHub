@@ -1,0 +1,336 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { normalizar, numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const permisos = acciones(user.role, "proveedores");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+const puedeEditar = permisos.includes("editar");
+const puedeBorrar = permisos.includes("eliminar");
+const conAcciones = puedeEditar || puedeBorrar;
+
+type Proveedor = {
+  id: string;
+  nombre: string;
+  razon_social: string | null;
+  rfc: string | null;
+  contacto: string | null;
+  telefono: string | null;
+  correo: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  estado: string | null;
+  codigo_postal: string | null;
+  dias_credito: number;
+  sitio_web: string | null;
+  productos: number;
+};
+
+const proveedores = puedeVer
+  ? (
+      await pool.query<Proveedor>(
+        `select p.id, p.nombre, p.razon_social, p.rfc, p.contacto, p.telefono, p.correo,
+                p.direccion, p.ciudad, p.estado, p.codigo_postal, p.dias_credito, p.sitio_web,
+                count(i.id)::int as productos
+         from proveedores p
+         left join inventario i on i.proveedor_id = p.id
+         group by p.id
+         order by p.nombre`,
+      )
+    ).rows
+  : [];
+
+// Los campos del formulario, en el orden en que se llenan
+const campos: { name: keyof Proveedor; label: string; ancho?: boolean; [attr: string]: unknown }[] = [
+  { name: "nombre", label: "Nombre", required: true, ancho: true },
+  { name: "razon_social", label: "Razón social" },
+  { name: "rfc", label: "RFC", placeholder: "12 o 13 caracteres", maxlength: 13, autocapitalize: "characters" },
+  { name: "contacto", label: "Contacto", placeholder: "Quién atiende" },
+  { name: "telefono", label: "Teléfono", type: "tel" },
+  { name: "correo", label: "Correo", type: "email", ancho: true },
+  { name: "direccion", label: "Dirección", placeholder: "Calle y número", ancho: true },
+  { name: "ciudad", label: "Ciudad" },
+  { name: "estado", label: "Estado" },
+  { name: "codigo_postal", label: "Código postal", inputmode: "numeric", maxlength: 5, placeholder: "5 números" },
+  { name: "dias_credito", label: "Días de crédito", type: "number", min: 0, step: 1, value: 0, required: true },
+  { name: "sitio_web", label: "Sitio web", ancho: true },
+];
+
+const credito = (dias: number) => (dias === 0 ? "Contado" : `${dias} días`);
+const web = (sitio: string) => (/^https?:\/\//.test(sitio) ? sitio : `https://${sitio}`);
+---
+
+<Sistema titulo="Proveedores">
+  {
+    puedeVer && proveedores.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar proveedor</span>
+        <Icono nombre="buscar" />
+        <input id="buscar" type="search" placeholder="Buscar por nombre, RFC o ciudad" autocomplete="off" />
+      </label>
+    )
+  }
+  {
+    puedeCrear && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+        <Icono nombre="mas" />
+        Nuevo proveedor
+      </button>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a los proveedores.</p>
+    ) : proveedores.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay proveedores.
+        {puedeCrear && " Agrega el primero con Nuevo proveedor."}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Proveedores">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Proveedor</th>
+                <th>Razón social</th>
+                <th>RFC</th>
+                <th>Contacto</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>Dirección</th>
+                <th>Ciudad</th>
+                <th>Estado</th>
+                <th>C.P.</th>
+                <th>Crédito</th>
+                <th>Sitio web</th>
+                <th class="numero">Productos</th>
+                {conAcciones && <th class="fija-fin">Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {proveedores.map((p) => (
+                <tr
+                  id={`proveedor-${p.id}`}
+                  data-id={p.id}
+                  data-datos={JSON.stringify(p)}
+                  data-buscar={normalizar(
+                    [p.nombre, p.razon_social, p.rfc, p.contacto, p.ciudad, p.estado].join(" "),
+                  )}
+                >
+                  <td class="fija-inicio nombre">{p.nombre}</td>
+                  <td class="secundario">{p.razon_social ?? "—"}</td>
+                  <td class="rfc">{p.rfc ?? "—"}</td>
+                  <td>{p.contacto ?? "—"}</td>
+                  <td>
+                    {p.telefono ? <a href={`tel:${p.telefono.replace(/\s/g, "")}`}>{p.telefono}</a> : "—"}
+                  </td>
+                  <td>{p.correo ? <a href={`mailto:${p.correo}`}>{p.correo}</a> : "—"}</td>
+                  <td class="secundario">{p.direccion ?? "—"}</td>
+                  <td>{p.ciudad ?? "—"}</td>
+                  <td>{p.estado ?? "—"}</td>
+                  <td class="secundario">{p.codigo_postal ?? "—"}</td>
+                  <td>{credito(p.dias_credito)}</td>
+                  <td>
+                    {p.sitio_web ? (
+                      <a href={web(p.sitio_web)} target="_blank" rel="noopener noreferrer">
+                        {p.sitio_web}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td class="numero">
+                    <a href="/dashboard/inventario" class="secundario">
+                      {numero.format(p.productos)}
+                    </a>
+                  </td>
+                  {conAcciones && (
+                    <td class="fija-fin">
+                      <div class="acciones">
+                        {puedeEditar && (
+                          <button
+                            type="button"
+                            class="boton-icono"
+                            data-editar
+                            aria-label={`Editar ${p.nombre}`}
+                            title="Editar"
+                          >
+                            <Icono nombre="editar" />
+                          </button>
+                        )}
+                        {puedeBorrar && (
+                          <button
+                            type="button"
+                            class="boton-icono peligro"
+                            data-borrar
+                            aria-label={`Borrar ${p.nombre}`}
+                            title="Borrar"
+                          >
+                            <Icono nombre="borrar" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {
+    (puedeCrear || puedeEditar) && (
+      <dialog id="proveedor" class="dialogo" aria-labelledby="titulo-proveedor">
+        <form novalidate>
+          <h2 id="titulo-proveedor">Nuevo proveedor</h2>
+          <input type="hidden" name="id" />
+          <div class="campos">
+            {campos.map(({ name, label, ancho, ...attrs }) => (
+              <div class:list={["campo", { ancho }]}>
+                <label for={`pv-${name}`}>{label}</label>
+                <input id={`pv-${name}`} name={name} {...attrs} />
+              </div>
+            ))}
+          </div>
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">
+              Agregar proveedor
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    puedeBorrar && (
+      <dialog id="borrar" class="dialogo dialogo-angosto" aria-labelledby="titulo-borrar">
+        <form novalidate>
+          <h2 id="titulo-borrar">Borrar proveedor</h2>
+          <input type="hidden" name="id" />
+          <p class="dialogo-texto" />
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton peligro">
+              Borrar
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarBuscador, enviarConAccion } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+
+  // La misma ventana sirve para Nuevo y Editar: al editar se llena con los datos de la fila
+  const dialogo = document.querySelector<HTMLDialogElement>("#proveedor");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar) return;
+    form.reset();
+    for (const campo of form.elements) {
+      if (!(campo instanceof HTMLInputElement) || !datos) continue;
+      campo.value = String(datos[campo.name] ?? "");
+    }
+    if (!datos) form.querySelector<HTMLInputElement>("[name=id]")!.value = "";
+    titulo.textContent = datos ? `Editar ${datos.nombre}` : "Nuevo proveedor";
+    guardar.textContent = datos ? "Guardar cambios" : "Agregar proveedor";
+    dialogo.showModal();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+  enviarConAccion(dialogo, (datos) => actions.proveedores.guardar(datos));
+
+  // Borrar pide confirmación y avisa cuántos productos se quedan sin proveedor
+  const borrar = document.querySelector<HTMLDialogElement>("#borrar");
+  enviarConAccion(borrar, (datos) =>
+    actions.proveedores.borrar({ id: String(datos.get("id")) }),
+  );
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("button");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (!boton || !fila?.dataset.datos) return;
+    const datos = JSON.parse(fila.dataset.datos);
+
+    if (boton.hasAttribute("data-editar")) abrir(datos);
+
+    if (boton.hasAttribute("data-borrar") && borrar) {
+      borrar.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      borrar.querySelector(".dialogo-texto")!.textContent =
+        datos.productos > 0
+          ? `Se borrará ${datos.nombre}. Sus ${datos.productos} productos se quedan en el inventario, sin proveedor.`
+          : `Se borrará ${datos.nombre}. No tiene productos en el inventario.`;
+      borrar.showModal();
+    }
+  });
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .rfc {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  td a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .acciones {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* Al llegar desde el proveedor de un producto del inventario, su fila se marca */
+  tr:target td {
+    background-color: var(--color-mint);
+  }
+
+  tr:target .fija-inicio {
+    box-shadow:
+      inset 5px 0 0 var(--color-accent),
+      inset -2px 0 0 color-mix(in oklch, var(--color-primary) 15%, transparent);
+  }
+</style>

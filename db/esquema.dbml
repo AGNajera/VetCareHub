@@ -1,0 +1,143 @@
+// Estructura de la base de datos de VetCareHub (Postgres en Neon).
+// Para verla como diagrama, pega este archivo en https://dbdiagram.io
+// Es solo documentación: las tablas se crean con db/migraciones (pnpm db:migrar) y las de
+// cuentas con la CLI de Better Auth. Si cambia una migración, hay que cambiar esto también
+
+Project VetCareHub {
+  database_type: 'PostgreSQL'
+}
+
+// ─── Sistema ───────────────────────────────────────────────────────────────────
+
+Table proveedores {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nombre text [not null, unique]
+  razon_social text
+  rfc text [note: '12 o 13 caracteres, en mayúsculas']
+  contacto text [note: 'Representante del laboratorio o distribuidor']
+  telefono text
+  correo text
+  direccion text
+  ciudad text
+  estado text
+  codigo_postal text [note: '5 dígitos']
+  dias_credito integer [not null, default: 0, note: '0 es de contado']
+  sitio_web text
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+}
+
+Table inventario {
+  id uuid [pk, default: `gen_random_uuid()`]
+  nombre text [not null]
+  categoria text [not null, note: 'medicamento, vacuna, material, alimento o higiene']
+  unidad text [not null, default: 'pieza']
+  cantidad integer [not null, default: 0, note: '>= 0']
+  stock_minimo integer [not null, default: 0, note: 'Con esta cantidad o menos está "por agotarse"']
+  precio "numeric(10,2)" [not null, default: 0]
+  caducidad date
+  proveedor_id uuid [ref: > proveedores.id]
+  activo boolean [not null, default: true, note: 'Los productos se deshabilitan en lugar de borrarse']
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    proveedor_id [name: 'inventario_proveedor_idx']
+  }
+
+  Note: 'Si se borra el proveedor, el producto se queda con proveedor_id en null'
+}
+
+Table migraciones {
+  nombre text [pk, note: 'Archivo de db/migraciones']
+  aplicada_en timestamptz [not null, default: `now()`]
+
+  Note: 'La llena scripts/sql.ts para no aplicar dos veces la misma migración'
+}
+
+// ─── Better Auth ───────────────────────────────────────────────────────────────
+
+Table user {
+  id text [pk]
+  name text [not null]
+  email text [not null, unique]
+  emailVerified boolean [not null]
+  image text
+  role text [note: 'gerencia, jefatura o personal (src/lib/permisos.ts)']
+  puesto text [note: 'Puesto del organigrama (src/data/equipo.ts)']
+  banned boolean
+  banReason text
+  banExpires timestamptz
+  createdAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updatedAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table session {
+  id text [pk]
+  userId text [not null, ref: > user.id]
+  token text [not null, unique]
+  expiresAt timestamptz [not null]
+  ipAddress text
+  userAgent text
+  impersonatedBy text
+  createdAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updatedAt timestamptz [not null]
+
+  indexes {
+    userId
+  }
+}
+
+Table account {
+  id text [pk]
+  userId text [not null, ref: > user.id]
+  accountId text [not null]
+  providerId text [not null, note: '"credential" para correo y contraseña']
+  password text [note: 'Hash de la contraseña']
+  accessToken text
+  refreshToken text
+  idToken text
+  accessTokenExpiresAt timestamptz
+  refreshTokenExpiresAt timestamptz
+  scope text
+  createdAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updatedAt timestamptz [not null]
+
+  indexes {
+    userId
+  }
+}
+
+Table verification {
+  id text [pk]
+  identifier text [not null]
+  value text [not null]
+  expiresAt timestamptz [not null]
+  createdAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updatedAt timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    identifier
+  }
+}
+
+Table rateLimit {
+  id text [pk]
+  key text [not null, unique]
+  count integer [not null]
+  lastRequest bigint [not null]
+}
+
+TableGroup sistema {
+  proveedores
+  inventario
+  migraciones
+}
+
+TableGroup better_auth {
+  user
+  session
+  account
+  verification
+  rateLimit
+}

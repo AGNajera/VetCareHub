@@ -1,13 +1,13 @@
 import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins/admin";
-import { Pool } from "pg";
 import { ac, roles } from "./permisos";
+import { pool } from "./db";
 
 // Se lee de process.env y no de import.meta.env porque este archivo también lo cargan
 // la CLI de Better Auth (migraciones) y scripts/crear-cuentas.ts, que corren fuera de Astro
 export const auth = betterAuth({
   appName: "VetCareHub",
-  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  database: pool,
 
   // En local y en producción la URL viene de BETTER_AUTH_URL. Los deploys de preview
   // cambian de URL en cada rama y cada commit, así que ahí no se define y se aceptan

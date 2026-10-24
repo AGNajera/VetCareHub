@@ -1,0 +1,214 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import { nombreRol, type Rol } from "../../lib/permisos";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+
+const datos = [
+  { campo: "Nombre", valor: user.name },
+  { campo: "Correo", valor: user.email },
+  { campo: "Puesto", valor: user.puesto ?? "—" },
+  { campo: "Rol", valor: nombreRol[user.role as Rol] ?? user.role },
+];
+---
+
+<Sistema titulo="Mi cuenta">
+  <div class="columnas">
+    <section class="caja" aria-labelledby="titulo-datos">
+      <h2 id="titulo-datos">Tus datos</h2>
+      <dl>
+        {
+          datos.map(({ campo, valor }) => (
+            <div>
+              <dt>{campo}</dt>
+              <dd>{valor}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <p class="secundario">Si algo está mal, pídele a la gerencia que lo corrija.</p>
+    </section>
+
+    <section class="caja" aria-labelledby="titulo-password">
+      <h2 id="titulo-password">Cambiar contraseña</h2>
+      <form class="formulario" novalidate>
+        <label for="actual">Contraseña actual</label>
+        <input id="actual" type="password" name="actual" autocomplete="current-password" required />
+
+        <label for="nueva">Contraseña nueva</label>
+        <input
+          id="nueva"
+          type="password"
+          name="nueva"
+          autocomplete="new-password"
+          minlength="8"
+          aria-describedby="nueva-ayuda"
+          required
+        />
+        <p id="nueva-ayuda" class="ayuda">Al menos 8 caracteres.</p>
+
+        <p class="mensaje" role="status" aria-live="polite"></p>
+
+        <button type="submit" class="guardar">Guardar contraseña</button>
+      </form>
+    </section>
+  </div>
+</Sistema>
+
+<script>
+  import { authClient } from "../../lib/auth-client";
+
+  const form = document.querySelector<HTMLFormElement>(".formulario");
+  const mensaje = form?.querySelector<HTMLElement>(".mensaje");
+  const guardar = form?.querySelector<HTMLButtonElement>(".guardar");
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity() || !mensaje || !guardar) return;
+
+    const datos = new FormData(form);
+    mensaje.textContent = "";
+    mensaje.classList.remove("error");
+    guardar.disabled = true;
+
+    // Cierra la sesión en los demás dispositivos, por si alguien más conocía la anterior
+    const { error } = await authClient.changePassword({
+      currentPassword: String(datos.get("actual")),
+      newPassword: String(datos.get("nueva")),
+      revokeOtherSessions: true,
+    });
+
+    guardar.disabled = false;
+    if (error) {
+      mensaje.classList.add("error");
+      mensaje.textContent =
+        error.code === "INVALID_PASSWORD"
+          ? "La contraseña actual no es correcta."
+          : "No se pudo cambiar la contraseña. Inténtalo de nuevo.";
+      return;
+    }
+
+    form.reset();
+    mensaje.textContent = "Listo, tu contraseña se cambió.";
+  });
+</script>
+
+<style>
+  .columnas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    align-items: start;
+  }
+
+  .caja {
+    padding: 24px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+
+    h2 {
+      margin: 0 0 18px;
+      font-family: var(--font-bold);
+      font-size: 1.35rem;
+    }
+
+    > p {
+      margin: 18px 0 0;
+      line-height: 1.5;
+    }
+  }
+
+  dl {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+  }
+
+  dt {
+    font-family: var(--font-bold);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .formulario {
+    display: flex;
+    flex-direction: column;
+  }
+
+  label {
+    margin-bottom: 6px;
+    font-family: var(--font-bold);
+  }
+
+  input {
+    width: 100%;
+    margin-bottom: 16px;
+    padding: 11px 14px;
+    border: var(--border);
+    border-radius: 8px;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    font-family: var(--font-body);
+    /* 16px o más para que Safari en iPhone no haga zoom al escribir */
+    font-size: 1.05rem;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  #nueva {
+    margin-bottom: 6px;
+  }
+
+  .ayuda {
+    margin: 0 0 16px;
+    font-size: 0.95rem;
+  }
+
+  .mensaje {
+    margin: 0 0 16px;
+    color: var(--color-accent);
+    line-height: 1.4;
+
+    &.error {
+      color: #b42318;
+    }
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  .guardar {
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 1.1rem;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+
+    &:disabled {
+      opacity: 0.75;
+      cursor: progress;
+    }
+  }
+</style>

@@ -1,0 +1,952 @@
+---
+// Layout de las páginas del sistema (/dashboard/...): el sidebar con las secciones a la
+// izquierda y abajo de él la cuenta de quien entró, con Mi cuenta y Cerrar sesión.
+// El middleware ya mandó al login a quien no tiene sesión, así que aquí siempre hay user
+import Layout from "./Layout.astro";
+import Icono, { type NombreIcono } from "../components/sistema/Icono.astro";
+import Logo from "../assets/logo.svg";
+import { nombreRol, type Rol } from "../lib/permisos";
+import { fotoDeCorreo } from "../data/fotos";
+
+// titulo va en la pestaña; encabezado, si se pasa, es el h1 de la página
+const { titulo, encabezado = titulo } = Astro.props;
+const user = Astro.locals.user!;
+
+const secciones: { href: string; texto: string; icono: NombreIcono }[] = [
+  { href: "/dashboard", texto: "Inicio", icono: "inicio" },
+  { href: "/dashboard/inventario", texto: "Inventario", icono: "inventario" },
+  { href: "/dashboard/proveedores", texto: "Proveedores", icono: "proveedores" },
+];
+
+const actual = Astro.url.pathname.replace(/\/$/, "");
+const rol = nombreRol[user.role as Rol] ?? user.role;
+// La foto del organigrama en el círculo de la cuenta; si no tiene, las iniciales del
+// nombre y el primer apellido
+const foto = fotoDeCorreo(user.email);
+const iniciales = user.name
+  .split(" ")
+  .filter((_, i, partes) => i === 0 || i === partes.length - 2)
+  .map((parte) => parte[0])
+  .join("");
+---
+
+<Layout titulo={titulo} descripcion="Sistema interno de VetCareHub.">
+  <div class="sistema">
+    <!-- En celular el sidebar se esconde y esta barra lo abre -->
+    <div class="barra">
+      <button
+        type="button"
+        class="abrir"
+        aria-label="Abrir menú"
+        aria-expanded="false"
+        aria-controls="sidebar-sistema"
+      >
+        <Icono nombre="menu" />
+      </button>
+      <a href="/dashboard" class="barra-marca">VetCareHub</a>
+    </div>
+    <div class="fondo" data-fondo></div>
+
+    <aside id="sidebar-sistema" class="sidebar" aria-label="Sistema">
+      <a href="/dashboard" class="marca">
+        <Logo class="logo" aria-hidden="true" />
+        <span>VetCareHub</span>
+      </a>
+
+      <nav aria-label="Secciones">
+        {
+          secciones.map(({ href, texto, icono }) => (
+            <a href={href} aria-current={href === actual ? "page" : undefined}>
+              <Icono nombre={icono} />
+              {texto}
+            </a>
+          ))
+        }
+      </nav>
+
+      <div class="cuenta">
+        <ul id="menu-cuenta" class="menu" hidden>
+          <li>
+            <a
+              href="/dashboard/cuenta"
+              aria-current={actual === "/dashboard/cuenta" ? "page" : undefined}
+            >
+              <Icono nombre="cuenta" />
+              Mi cuenta
+            </a>
+          </li>
+          <li>
+            <button type="button" class="salir">
+              <Icono nombre="salir" />
+              Cerrar sesión
+            </button>
+          </li>
+        </ul>
+
+        <button
+          type="button"
+          class="quien"
+          aria-expanded="false"
+          aria-controls="menu-cuenta"
+        >
+          {
+            foto ? (
+              <img class="avatar" src={foto.src} width="40" height="40" alt="" />
+            ) : (
+              <span class="avatar iniciales" aria-hidden="true">
+                {iniciales}
+              </span>
+            )
+          }
+          <span class="datos">
+            <span class="nombre">{user.name}</span>
+            <span class="rol">{rol}</span>
+          </span>
+          <Icono nombre="selector" />
+        </button>
+      </div>
+    </aside>
+
+    <main class="contenido">
+      <!-- Junto al título, lo que la página pone en el slot "acciones": el buscador y el
+           botón de Nuevo -->
+      <div class="encabezado">
+        <h1>{encabezado}</h1>
+        <slot name="acciones" />
+      </div>
+      <slot />
+    </main>
+
+    <!-- Errores de las acciones de la tabla (+, −, deshabilitar, borrar) -->
+    <p id="aviso-error" class="aviso-error" role="alert" hidden></p>
+  </div>
+</Layout>
+
+<script>
+  import { authClient } from "../lib/auth-client";
+
+  // Menú de la cuenta: se abre con el botón de abajo y se cierra al hacer clic fuera o
+  // con Escape
+  const quien = document.querySelector<HTMLButtonElement>(".quien");
+  const menu = document.querySelector<HTMLElement>("#menu-cuenta");
+  const salir = document.querySelector<HTMLButtonElement>(".salir");
+
+  const abrirMenu = (abierto: boolean) => {
+    if (!quien || !menu) return;
+    quien.setAttribute("aria-expanded", String(abierto));
+    menu.hidden = !abierto;
+    if (abierto) menu.querySelector<HTMLElement>("a, button")?.focus();
+  };
+
+  quien?.addEventListener("click", () => abrirMenu(menu?.hidden ?? false));
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target as Element).closest(".cuenta")) abrirMenu(false);
+  });
+
+  salir?.addEventListener("click", async () => {
+    salir.disabled = true;
+    await authClient.signOut();
+    location.assign("/");
+  });
+
+  // Sidebar en celular
+  const abrir = document.querySelector<HTMLButtonElement>(".abrir");
+  const sidebar = document.querySelector<HTMLElement>("#sidebar-sistema");
+  const fondo = document.querySelector<HTMLElement>("[data-fondo]");
+  const celular = matchMedia("(max-width: 820px)");
+
+  const abrirSidebar = (abierto: boolean) => {
+    if (!abrir || !sidebar || !fondo) return;
+    abrir.setAttribute("aria-expanded", String(abierto));
+    abrir.setAttribute("aria-label", abierto ? "Cerrar menú" : "Abrir menú");
+    sidebar.toggleAttribute("data-abierto", abierto);
+    fondo.toggleAttribute("data-abierto", abierto);
+    // Cerrado en celular, sus enlaces no se alcanzan con Tab
+    sidebar.inert = celular.matches && !abierto;
+    document.documentElement.style.overflow = abierto ? "hidden" : "";
+    if (abierto) sidebar.querySelector<HTMLElement>("a")?.focus();
+  };
+
+  abrir?.addEventListener("click", () =>
+    abrirSidebar(abrir.getAttribute("aria-expanded") !== "true"),
+  );
+  fondo?.addEventListener("click", () => abrirSidebar(false));
+  celular.addEventListener("change", () => abrirSidebar(false));
+  abrirSidebar(false);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (menu && !menu.hidden) {
+      abrirMenu(false);
+      quien?.focus();
+    } else if (abrir?.getAttribute("aria-expanded") === "true") {
+      abrirSidebar(false);
+      abrir.focus();
+    }
+  });
+</script>
+
+<style>
+  .sistema {
+    --ancho-sidebar: 264px;
+
+    display: grid;
+    grid-template-columns: var(--ancho-sidebar) minmax(0, 1fr);
+    min-height: 100%;
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    font-family: var(--font-body);
+  }
+
+  .barra,
+  .fondo {
+    display: none;
+  }
+
+  /* Ocupa todo el alto de la ventana y se queda quieto al bajar por la página */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    border-right: var(--border);
+    background-color: var(--color-surface);
+  }
+
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 20px;
+    border-bottom: var(--border);
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    font-size: 1.4rem;
+    text-decoration: none;
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 12px;
+    overflow-y: auto;
+  }
+
+  /* Los enlaces de las secciones y las opciones del menú de la cuenta */
+  nav a,
+  .menu a,
+  .menu button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 14px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--color-primary);
+    font-family: var(--font-body);
+    font-size: 1.1rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--color-mint);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+
+    /* La sección en la que estás va en marino, como en el header del sitio */
+    &[aria-current="page"] {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+  }
+
+  .cuenta {
+    position: relative;
+    padding: 12px;
+    border-top: var(--border);
+  }
+
+  /* Sale hacia arriba del botón, del mismo ancho, separado de la línea del sidebar.
+     Al abrir sube un poco desde el nombre */
+  .menu {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + 10px);
+    transform-origin: bottom center;
+    /* allow-discrete deja que display: none espere a que termine el desvanecido al
+       cerrar; @starting-style es de donde parte al abrir */
+    transition:
+      opacity 160ms ease,
+      translate 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      scale 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      display 160ms allow-discrete;
+    margin: 0;
+    padding: 6px;
+    border: var(--border);
+    border-radius: 10px;
+    background-color: var(--color-white);
+    box-shadow: 0 8px 24px color-mix(in oklch, var(--color-primary) 18%, transparent);
+    list-style: none;
+
+    &[hidden] {
+      display: none;
+      opacity: 0;
+      translate: 0 8px;
+      scale: 0.97;
+    }
+
+    @starting-style {
+      opacity: 0;
+      translate: 0 8px;
+      scale: 0.97;
+    }
+
+    .salir:disabled {
+      opacity: 0.7;
+      cursor: progress;
+    }
+  }
+
+  .quien {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--color-primary);
+    font-family: var(--font-body);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &[aria-expanded="true"] {
+      background-color: var(--color-mint);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: -3px;
+    }
+  }
+
+  .avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .iniciales {
+    display: grid;
+    place-items: center;
+    background-color: var(--color-accent);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 1rem;
+  }
+
+  .datos {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Los nombres completos son largos: se cortan con … */
+  .nombre {
+    overflow: hidden;
+    font-family: var(--font-bold);
+    font-size: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rol {
+    color: var(--color-accent);
+    font-size: 0.95rem;
+  }
+
+  .contenido {
+    width: min(100%, 1280px);
+    padding: 40px clamp(16px, 4vw, 48px) 64px;
+  }
+
+  .encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 20px;
+    margin-bottom: 28px;
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-bold);
+      font-size: 2rem;
+    }
+  }
+
+  /* Piezas que comparten las páginas del sistema. :global porque viven en cada página */
+  .contenido {
+    /* Bloque con título y, a la derecha, un enlace o una nota */
+    :global(.bloque) {
+      margin-top: 40px;
+    }
+
+    :global(.bloque-encabezado) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 16px;
+      margin-bottom: 14px;
+
+      :global(h2) {
+        margin: 0;
+        font-family: var(--font-bold);
+        font-size: 1.4rem;
+      }
+
+      :global(a) {
+        color: var(--color-accent);
+        font-family: var(--font-bold);
+
+        &:focus-visible {
+          outline: var(--focus-ring);
+          outline-offset: 3px;
+        }
+      }
+    }
+
+    /* Las tablas se desplazan de lado dentro de su marco, nunca la página entera */
+    :global(.marco-tabla) {
+      overflow-x: auto;
+      border: var(--border);
+      border-radius: 12px;
+      background-color: var(--color-white);
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+
+    :global(table) {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1.02rem;
+    }
+
+    :global(th),
+    :global(td) {
+      padding: 12px 16px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    :global(th) {
+      background-color: var(--color-surface);
+      border-bottom: var(--border);
+      font-family: var(--font-bold);
+    }
+
+    :global(tbody tr + tr td) {
+      border-top: 1px solid color-mix(in oklch, var(--color-primary) 15%, transparent);
+    }
+
+    :global(.numero) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    :global(.secundario) {
+      color: color-mix(in oklch, var(--color-primary) 65%, white);
+    }
+
+    /* Pastillas de estado y de rol */
+    :global(.etiqueta) {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background-color: var(--color-mint);
+      font-size: 0.92rem;
+    }
+
+    :global(.etiqueta.alerta) {
+      background-color: #fde8d7;
+      color: #8a3b0c;
+    }
+
+    /* Buscador junto al título: filtra las filas de la tabla mientras escribes */
+    :global(.buscador) {
+      position: relative;
+      flex: 1 1 220px;
+      max-width: 360px;
+
+      :global(.icono) {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        width: 20px;
+        height: 20px;
+        translate: 0 -50%;
+        pointer-events: none;
+      }
+
+      /* [type] para ganarle al padding general de los campos */
+      :global(input[type="search"]) {
+        padding-left: 40px;
+      }
+    }
+
+    /* El botón de Nuevo: grande, fuera de la tabla y a la derecha del encabezado */
+    :global(.boton-nuevo) {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+      padding: 13px 22px 13px 18px;
+      border: none;
+      border-radius: 10px;
+      background-color: var(--color-primary);
+      color: var(--color-white);
+      font-family: var(--font-bold);
+      font-size: 1.15rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: color-mix(in oklch, var(--color-primary) 85%, var(--color-accent));
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+
+    /* Botones de solo ícono dentro de las tablas */
+    :global(.boton-icono) {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: none;
+      color: var(--color-primary);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: var(--color-primary);
+        background-color: var(--color-white);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 1px;
+      }
+
+      &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      :global(.icono) {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    :global(.boton-icono.peligro:hover:not(:disabled)) {
+      border-color: #b42318;
+      color: #b42318;
+    }
+
+    /* Campos de los formularios y del buscador */
+    :global(.campo) {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+
+      :global(label) {
+        font-family: var(--font-bold);
+      }
+    }
+
+    :global(.campo.ancho) {
+      grid-column: 1 / -1;
+    }
+
+    :global(input:not([type="checkbox"])),
+    :global(select) {
+      width: 100%;
+      padding: 11px 14px;
+      border: var(--border);
+      border-radius: 8px;
+      background-color: var(--color-white);
+      color: var(--color-primary);
+      font-family: var(--font-body);
+      /* 16px o más para que Safari en iPhone no haga zoom al escribir */
+      font-size: 1.05rem;
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+
+      &::placeholder {
+        color: color-mix(in oklch, var(--color-primary) 50%, white);
+      }
+    }
+
+    /* Ventana de los formularios de Nuevo y Editar */
+    :global(.dialogo) {
+      width: min(100% - 32px, 640px);
+      max-height: calc(100dvh - 32px);
+      padding: 0;
+      border: var(--border);
+      border-radius: 16px;
+      background-color: var(--color-bg);
+      color: var(--color-primary);
+      font-family: var(--font-body);
+
+      &::backdrop {
+        background-color: color-mix(in oklch, var(--color-primary) 45%, transparent);
+      }
+
+      &[open] {
+        animation: aparecer 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      :global(form) {
+        display: flex;
+        flex-direction: column;
+      }
+
+      :global(h2) {
+        margin: 0;
+        padding: 20px 24px;
+        border-bottom: var(--border);
+        background-color: var(--color-surface);
+        font-family: var(--font-bold);
+        font-size: 1.4rem;
+      }
+    }
+
+    :global(.dialogo-angosto) {
+      width: min(100% - 32px, 440px);
+    }
+
+    :global(.campos) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      padding: 22px 24px;
+    }
+
+    :global(.dialogo-texto) {
+      margin: 0;
+      padding: 22px 24px;
+      line-height: 1.5;
+    }
+
+    /* El error y los botones se quedan al pie de la ventana aunque el formulario sea más
+       alto que la pantalla */
+    :global(.error-form) {
+      position: sticky;
+      bottom: 76px;
+      margin: 0;
+      padding: 12px 24px 0;
+      background-color: var(--color-bg);
+      color: #b42318;
+      line-height: 1.4;
+
+      &:empty {
+        display: none;
+      }
+    }
+
+    :global(.dialogo-botones) {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 14px 24px 18px;
+      background-color: var(--color-bg);
+    }
+
+    /* La línea de arriba del pie solo cuando no hay error encima */
+    :global(.error-form:empty + .dialogo-botones) {
+      border-top: 2px solid color-mix(in oklch, var(--color-primary) 12%, transparent);
+    }
+
+    :global(.boton) {
+      padding: 11px 20px;
+      border: var(--border);
+      border-radius: 8px;
+      background: none;
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 1.05rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--color-mint);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: progress;
+      }
+    }
+
+    :global(.boton.principal) {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+
+      &:hover {
+        background-color: color-mix(in oklch, var(--color-primary) 85%, var(--color-accent));
+      }
+    }
+
+    :global(.boton.peligro) {
+      border-color: #b42318;
+      background-color: #b42318;
+      color: var(--color-white);
+
+      &:hover {
+        background-color: #8f1c13;
+      }
+    }
+
+    /* En tablas anchas que se desplazan de lado, el nombre y las acciones se quedan fijos
+       en las orillas para no perder de vista de quién es la fila */
+    :global(.fija-inicio),
+    :global(.fija-fin) {
+      position: sticky;
+      z-index: 1;
+      background-color: var(--color-white);
+    }
+
+    :global(th.fija-inicio),
+    :global(th.fija-fin) {
+      background-color: var(--color-surface);
+    }
+
+    :global(.fija-inicio) {
+      left: 0;
+      box-shadow: inset -2px 0 0 color-mix(in oklch, var(--color-primary) 15%, transparent);
+    }
+
+    :global(.fija-fin) {
+      right: 0;
+      box-shadow: inset 2px 0 0 color-mix(in oklch, var(--color-primary) 15%, transparent);
+    }
+
+    :global(.sin-resultados) {
+      margin: 16px 0 0;
+    }
+
+    :global(.vacio) {
+      margin: 0;
+      padding: 28px;
+      border: 2px dashed color-mix(in oklch, var(--color-primary) 35%, transparent);
+      border-radius: 12px;
+      line-height: 1.5;
+      text-align: center;
+    }
+  }
+
+  /* En celular el sidebar sale desde la izquierda sobre la página, con la barra de arriba
+     para abrirlo */
+  @media (max-width: 820px) {
+    .sistema {
+      display: block;
+    }
+
+    .barra {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      height: var(--header-height);
+      border-bottom: var(--border);
+      background-color: var(--color-surface);
+    }
+
+    .abrir {
+      display: grid;
+      place-items: center;
+      width: var(--header-height);
+      height: 100%;
+      padding: 0;
+      border: none;
+      border-right: var(--border);
+      background: none;
+      color: var(--color-primary);
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: -3px;
+      }
+
+      :global(.icono) {
+        width: 28px;
+        height: 28px;
+      }
+    }
+
+    .barra-marca {
+      padding-inline: 16px;
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 1.4rem;
+      text-decoration: none;
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 30;
+      width: min(85vw, var(--ancho-sidebar));
+      translate: -100% 0;
+      transition: translate 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+      &[data-abierto] {
+        translate: 0 0;
+      }
+    }
+
+    .fondo {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: block;
+      background-color: color-mix(in oklch, var(--color-primary) 40%, transparent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 260ms ease;
+
+      &[data-abierto] {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    .contenido {
+      padding-top: 28px;
+    }
+
+    .encabezado {
+      margin-bottom: 20px;
+
+      h1 {
+        font-size: 1.7rem;
+      }
+    }
+  }
+
+  .aviso-error {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    z-index: 40;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 14px 20px;
+    border: 2px solid #b42318;
+    border-radius: 10px;
+    background-color: var(--color-white);
+    color: #b42318;
+    font-family: var(--font-bold);
+    box-shadow: 0 6px 0 color-mix(in oklch, #b42318 25%, transparent);
+    translate: -50% 0;
+    animation: aparecer 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Para lectores de pantalla: no se ve pero se lee */
+  :global(.visualmente-oculto) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .contenido :global(.campos) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* En celular no caben el nombre fijo, las acciones fijas y además la tabla */
+  @media (max-width: 820px) {
+    .contenido :global(.fija-inicio) {
+      position: static;
+      box-shadow: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .fondo,
+    .menu {
+      transition: none;
+    }
+
+    .contenido :global(.dialogo[open]),
+    .aviso-error {
+      animation: none;
+    }
+  }
+</style>

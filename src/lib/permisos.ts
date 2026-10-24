@@ -3,12 +3,12 @@ import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
 // Lo que se puede hacer en el sistema. defaultStatements son los permisos del plugin
 // admin (crear usuarios, cambiar roles, etc.), que solo tiene la gerencia
-const acciones = ["ver", "crear", "editar", "eliminar"] as const;
+const todas = ["ver", "crear", "editar", "eliminar"] as const;
 
 export const ac = createAccessControl({
   ...defaultStatements,
-  inventario: acciones,
-  proveedores: acciones,
+  inventario: todas,
+  proveedores: todas,
 });
 
 // Un rol por nivel del organigrama (src/data/equipo.ts)
@@ -27,3 +27,16 @@ export const roles = {
     proveedores: ["ver"],
   }),
 };
+
+export type Rol = keyof typeof roles;
+
+// Cómo se muestra cada rol en el sidebar y en Mi cuenta
+export const nombreRol: Record<Rol, string> = {
+  gerencia: "Gerencia",
+  jefatura: "Jefatura",
+  personal: "Personal",
+};
+
+// Lo que su rol le deja hacer en una sección, p. ej. acciones(user.role, "inventario")
+export const acciones = (rol: string | null | undefined, seccion: "inventario" | "proveedores") =>
+  (roles[rol as Rol]?.statements[seccion] ?? []) as readonly string[];
