@@ -97,9 +97,17 @@ const iniciales = user.name
     </aside>
 
     <main class="contenido">
-      <h1>{encabezado}</h1>
+      <!-- Junto al título, lo que la página pone en el slot "acciones": el buscador y el
+           botón de Nuevo -->
+      <div class="encabezado">
+        <h1>{encabezado}</h1>
+        <slot name="acciones" />
+      </div>
       <slot />
     </main>
+
+    <!-- Errores de las acciones de la tabla (+, −, deshabilitar, borrar) -->
+    <p id="aviso-error" class="aviso-error" role="alert" hidden></p>
   </div>
 </Layout>
 
@@ -352,11 +360,19 @@ const iniciales = user.name
   }
 
   .contenido {
-    width: min(100%, 1120px);
+    width: min(100%, 1280px);
     padding: 40px clamp(16px, 4vw, 48px) 64px;
+  }
+
+  .encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 20px;
+    margin-bottom: 28px;
 
     h1 {
-      margin: 0 0 28px;
+      margin: 0;
       font-family: var(--font-bold);
       font-size: 2rem;
     }
@@ -451,6 +467,284 @@ const iniciales = user.name
     :global(.etiqueta.alerta) {
       background-color: #fde8d7;
       color: #8a3b0c;
+    }
+
+    /* Buscador junto al título: filtra las filas de la tabla mientras escribes */
+    :global(.buscador) {
+      position: relative;
+      flex: 1 1 220px;
+      max-width: 360px;
+
+      :global(.icono) {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        width: 20px;
+        height: 20px;
+        translate: 0 -50%;
+        pointer-events: none;
+      }
+
+      /* [type] para ganarle al padding general de los campos */
+      :global(input[type="search"]) {
+        padding-left: 40px;
+      }
+    }
+
+    /* El botón de Nuevo: grande, fuera de la tabla y a la derecha del encabezado */
+    :global(.boton-nuevo) {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+      padding: 13px 22px 13px 18px;
+      border: none;
+      border-radius: 10px;
+      background-color: var(--color-primary);
+      color: var(--color-white);
+      font-family: var(--font-bold);
+      font-size: 1.15rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: color-mix(in oklch, var(--color-primary) 85%, var(--color-accent));
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+
+    /* Botones de solo ícono dentro de las tablas */
+    :global(.boton-icono) {
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: none;
+      color: var(--color-primary);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: var(--color-primary);
+        background-color: var(--color-white);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 1px;
+      }
+
+      &:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      :global(.icono) {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    :global(.boton-icono.peligro:hover:not(:disabled)) {
+      border-color: #b42318;
+      color: #b42318;
+    }
+
+    /* Campos de los formularios y del buscador */
+    :global(.campo) {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+
+      :global(label) {
+        font-family: var(--font-bold);
+      }
+    }
+
+    :global(.campo.ancho) {
+      grid-column: 1 / -1;
+    }
+
+    :global(input:not([type="checkbox"])),
+    :global(select) {
+      width: 100%;
+      padding: 11px 14px;
+      border: var(--border);
+      border-radius: 8px;
+      background-color: var(--color-white);
+      color: var(--color-primary);
+      font-family: var(--font-body);
+      /* 16px o más para que Safari en iPhone no haga zoom al escribir */
+      font-size: 1.05rem;
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+
+      &::placeholder {
+        color: color-mix(in oklch, var(--color-primary) 50%, white);
+      }
+    }
+
+    /* Ventana de los formularios de Nuevo y Editar */
+    :global(.dialogo) {
+      width: min(100% - 32px, 640px);
+      max-height: calc(100dvh - 32px);
+      padding: 0;
+      border: var(--border);
+      border-radius: 16px;
+      background-color: var(--color-bg);
+      color: var(--color-primary);
+      font-family: var(--font-body);
+
+      &::backdrop {
+        background-color: color-mix(in oklch, var(--color-primary) 45%, transparent);
+      }
+
+      &[open] {
+        animation: aparecer 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      :global(form) {
+        display: flex;
+        flex-direction: column;
+      }
+
+      :global(h2) {
+        margin: 0;
+        padding: 20px 24px;
+        border-bottom: var(--border);
+        background-color: var(--color-surface);
+        font-family: var(--font-bold);
+        font-size: 1.4rem;
+      }
+    }
+
+    :global(.dialogo-angosto) {
+      width: min(100% - 32px, 440px);
+    }
+
+    :global(.campos) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      padding: 22px 24px;
+    }
+
+    :global(.dialogo-texto) {
+      margin: 0;
+      padding: 22px 24px;
+      line-height: 1.5;
+    }
+
+    /* El error y los botones se quedan al pie de la ventana aunque el formulario sea más
+       alto que la pantalla */
+    :global(.error-form) {
+      position: sticky;
+      bottom: 76px;
+      margin: 0;
+      padding: 12px 24px 0;
+      background-color: var(--color-bg);
+      color: #b42318;
+      line-height: 1.4;
+
+      &:empty {
+        display: none;
+      }
+    }
+
+    :global(.dialogo-botones) {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 14px 24px 18px;
+      background-color: var(--color-bg);
+    }
+
+    /* La línea de arriba del pie solo cuando no hay error encima */
+    :global(.error-form:empty + .dialogo-botones) {
+      border-top: 2px solid color-mix(in oklch, var(--color-primary) 12%, transparent);
+    }
+
+    :global(.boton) {
+      padding: 11px 20px;
+      border: var(--border);
+      border-radius: 8px;
+      background: none;
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 1.05rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--color-mint);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: progress;
+      }
+    }
+
+    :global(.boton.principal) {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+
+      &:hover {
+        background-color: color-mix(in oklch, var(--color-primary) 85%, var(--color-accent));
+      }
+    }
+
+    :global(.boton.peligro) {
+      border-color: #b42318;
+      background-color: #b42318;
+      color: var(--color-white);
+
+      &:hover {
+        background-color: #8f1c13;
+      }
+    }
+
+    /* En tablas anchas que se desplazan de lado, el nombre y las acciones se quedan fijos
+       en las orillas para no perder de vista de quién es la fila */
+    :global(.fija-inicio),
+    :global(.fija-fin) {
+      position: sticky;
+      z-index: 1;
+      background-color: var(--color-white);
+    }
+
+    :global(th.fija-inicio),
+    :global(th.fija-fin) {
+      background-color: var(--color-surface);
+    }
+
+    :global(.fija-inicio) {
+      left: 0;
+      box-shadow: inset -2px 0 0 color-mix(in oklch, var(--color-primary) 15%, transparent);
+    }
+
+    :global(.fija-fin) {
+      right: 0;
+      box-shadow: inset 2px 0 0 color-mix(in oklch, var(--color-primary) 15%, transparent);
+    }
+
+    :global(.sin-resultados) {
+      margin: 16px 0 0;
     }
 
     :global(.vacio) {
@@ -549,11 +843,64 @@ const iniciales = user.name
 
     .contenido {
       padding-top: 28px;
+    }
+
+    .encabezado {
+      margin-bottom: 20px;
 
       h1 {
-        margin-bottom: 20px;
         font-size: 1.7rem;
       }
+    }
+  }
+
+  .aviso-error {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    z-index: 40;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 14px 20px;
+    border: 2px solid #b42318;
+    border-radius: 10px;
+    background-color: var(--color-white);
+    color: #b42318;
+    font-family: var(--font-bold);
+    box-shadow: 0 6px 0 color-mix(in oklch, #b42318 25%, transparent);
+    translate: -50% 0;
+    animation: aparecer 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Para lectores de pantalla: no se ve pero se lee */
+  :global(.visualmente-oculto) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .contenido :global(.campos) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* En celular no caben el nombre fijo, las acciones fijas y además la tabla */
+  @media (max-width: 820px) {
+    .contenido :global(.fija-inicio) {
+      position: static;
+      box-shadow: none;
     }
   }
 
@@ -561,6 +908,11 @@ const iniciales = user.name
     .sidebar,
     .fondo {
       transition: none;
+    }
+
+    .contenido :global(.dialogo[open]),
+    .aviso-error {
+      animation: none;
     }
   }
 </style>

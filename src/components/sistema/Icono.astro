@@ -41,6 +41,19 @@ const trazos = {
   ],
   selector: ["M8 9l4 -4l4 4", "M16 15l-4 4l-4 -4"],
   menu: ["M4 6l16 0", "M4 12l16 0", "M4 18l16 0"],
+  mas: ["M12 5l0 14", "M5 12l14 0"],
+  menos: ["M5 12l14 0"],
+  buscar: ["M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0", "M21 21l-6 -6"],
+  editar: ["M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4", "M13.5 6.5l4 4"],
+  borrar: [
+    "M4 7l16 0",
+    "M10 11l0 6",
+    "M14 11l0 6",
+    "M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12",
+    "M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3",
+  ],
+  deshabilitar: ["M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0", "M5.7 5.7l12.6 12.6"],
+  habilitar: ["M9 14l-4 -4l4 -4", "M5 10h11a4 4 0 1 1 0 8h-1"],
 };
 
 export type NombreIcono = keyof typeof trazos;

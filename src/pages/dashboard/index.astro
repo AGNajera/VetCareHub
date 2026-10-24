@@ -2,47 +2,36 @@
 import Sistema from "../../layouts/Sistema.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { nombreRol, type Rol } from "../../lib/permisos";
 import { numero } from "../../lib/formato";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
 
-// Las tres consultas van al mismo tiempo
-const [usuarios, productos, resumen] = await Promise.all([
-  pool.query<{ name: string; puesto: string | null; role: Rol }>(
-    `select name, puesto, role from "user"
-     order by array_position(array['gerencia', 'jefatura', 'personal'], role), name`,
-  ),
-  // Primero lo que está por agotarse, para que se vea sin buscarlo
-  pool.query<{ nombre: string; categoria: string; cantidad: number; unidad: string; agotandose: boolean }>(
-    `select nombre, categoria, cantidad, unidad, cantidad <= stock_minimo as agotandose
-     from inventario
-     order by agotandose desc, cantidad::float / greatest(stock_minimo, 1), nombre
-     limit 6`,
-  ),
-  pool.query<{ productos: number; agotandose: number }>(
-    `select count(*)::int as productos,
-            count(*) filter (where cantidad <= stock_minimo)::int as agotandose
-     from inventario`,
-  ),
-]);
+// Los deshabilitados no cuentan: ya no se usan en la clínica
+const { rows } = await pool.query<{ usuarios: number; productos: number; agotandose: number }>(
+  `select (select count(*) from "user")::int as usuarios,
+          count(*)::int as productos,
+          count(*) filter (where cantidad <= stock_minimo)::int as agotandose
+   from inventario
+   where activo`,
+);
+const { usuarios, productos, agotandose } = rows[0];
 
-const { productos: totalProductos, agotandose } = resumen.rows[0];
-
-const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono }[] = [
+// La de productos lleva al inventario; las demás todavía no tienen página
+const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string }[] = [
   {
     titulo: "Usuarios",
-    valor: numero.format(usuarios.rowCount ?? 0),
+    valor: numero.format(usuarios),
     nota: "Cuentas del personal",
     icono: "usuarios",
   },
   {
     titulo: "Productos",
-    valor: numero.format(totalProductos),
+    valor: numero.format(productos),
     nota: agotandose ? `${agotandose} por agotarse` : "Todo con existencias",
     icono: "inventario",
+    href: "/dashboard/inventario",
   },
   {
     titulo: "Clientes",
@@ -56,83 +45,23 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
   <ul class="tarjetas">
     {
-      tarjetas.map(({ titulo, valor, nota, icono }) => (
-        <li>
-          <span class="tarjeta-icono">
-            <Icono nombre={icono} />
-          </span>
-          <h2>{titulo}</h2>
-          <p class="valor">{valor}</p>
-          <p class="nota">{nota}</p>
-        </li>
-      ))
+      tarjetas.map(({ titulo, valor, nota, icono, href }) => {
+        const Etiqueta = href ? "a" : "div";
+        return (
+          <li>
+            <Etiqueta class:list={["tarjeta", { enlace: href }]} href={href}>
+              <span class="tarjeta-icono">
+                <Icono nombre={icono} />
+              </span>
+              <h2>{titulo}</h2>
+              <p class="valor">{valor}</p>
+              <p class="nota">{nota}</p>
+            </Etiqueta>
+          </li>
+        );
+      })
     }
   </ul>
-
-  <section class="bloque" aria-labelledby="titulo-usuarios">
-    <div class="bloque-encabezado">
-      <h2 id="titulo-usuarios">Usuarios</h2>
-    </div>
-    <div class="marco-tabla" tabindex="0" role="region" aria-labelledby="titulo-usuarios">
-      <table>
-        <thead>
-          <tr><th>Nombre</th><th>Puesto</th><th>Rol</th></tr>
-        </thead>
-        <tbody>
-          {
-            usuarios.rows.map(({ name, puesto, role }) => (
-              <tr>
-                <td>{name}</td>
-                <td class="secundario">{puesto ?? "—"}</td>
-                <td><span class="etiqueta">{nombreRol[role] ?? role}</span></td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="bloque" aria-labelledby="titulo-productos">
-    <div class="bloque-encabezado">
-      <h2 id="titulo-productos">Productos</h2>
-      <a href="/dashboard/inventario">Ver todo el inventario</a>
-    </div>
-    {
-      productos.rowCount ? (
-        <div class="marco-tabla" tabindex="0" role="region" aria-labelledby="titulo-productos">
-          <table>
-            <thead>
-              <tr><th>Producto</th><th>Categoría</th><th class="numero">Existencias</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              {productos.rows.map(({ nombre, categoria, cantidad, unidad, agotandose }) => (
-                <tr>
-                  <td>{nombre}</td>
-                  <td class="secundario categoria">{categoria}</td>
-                  <td class="numero">{numero.format(cantidad)} {unidad}</td>
-                  <td>
-                    <span class:list={["etiqueta", { alerta: agotandose }]}>
-                      {agotandose ? "Por agotarse" : "Suficiente"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p class="vacio">Todavía no hay productos en el inventario.</p>
-      )
-    }
-  </section>
-
-  <section class="bloque" aria-labelledby="titulo-clientes">
-    <div class="bloque-encabezado">
-      <h2 id="titulo-clientes">Clientes</h2>
-    </div>
-    <p class="vacio">Aquí aparecerán los dueños de las mascotas cuando se empiecen a registrar.</p>
-  </section>
 </Sistema>
 
 <style>
@@ -143,16 +72,19 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     margin: 0;
     padding: 0;
     list-style: none;
+  }
 
-    li {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: start;
-      padding: 20px 22px;
-      border: var(--border);
-      border-radius: 14px;
-      background-color: var(--color-surface);
-    }
+  .tarjeta {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    height: 100%;
+    padding: 20px 22px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+    text-decoration: none;
 
     h2 {
       grid-row: 1;
@@ -164,6 +96,33 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     p {
       grid-column: 1 / -1;
       margin: 0;
+    }
+  }
+
+  /* La que lleva a otra página se levanta un poco, como una ficha que se puede tomar */
+  .tarjeta.enlace {
+    box-shadow: 0 4px 0 var(--color-primary);
+    transition:
+      translate 120ms ease,
+      box-shadow 120ms ease;
+
+    &:hover {
+      translate: 0 -2px;
+      box-shadow: 0 6px 0 var(--color-primary);
+
+      h2 {
+        text-decoration: underline;
+      }
+    }
+
+    &:active {
+      translate: 0 3px;
+      box-shadow: 0 1px 0 var(--color-primary);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 4px;
     }
   }
 
@@ -190,7 +149,9 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     color: var(--color-accent);
   }
 
-  .categoria {
-    text-transform: capitalize;
+  @media (prefers-reduced-motion: reduce) {
+    .tarjeta.enlace {
+      transition: none;
+    }
   }
 </style>

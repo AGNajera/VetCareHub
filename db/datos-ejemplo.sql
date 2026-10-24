@@ -1,10 +1,10 @@
 -- Datos para probar el dashboard en local (pnpm db:ejemplo). No se usan en producción
 
-insert into proveedores (nombre, contacto, telefono, correo, direccion) values
-  ('Laboratorios Holland', 'Patricia Morales', '777 312 4410', 'ventas@holland.mx', 'Av. Morelos Sur 120, Cuernavaca'),
-  ('Distribuidora Vetmex', 'Ricardo Salgado', '55 5523 9087', 'pedidos@vetmex.mx', 'Calz. de Tlalpan 3402, CDMX'),
-  ('Zoetis México', 'Gabriela Ortiz', '55 5081 7700', 'atencion@zoetis.mx', 'Paseo de la Reforma 505, CDMX'),
-  ('Suministros Médicos del Sur', 'Hugo Benítez', '777 318 2295', 'contacto@smsur.mx', 'Blvd. Juárez 88, Cuernavaca')
+insert into proveedores (nombre, razon_social, rfc, contacto, telefono, correo, direccion, ciudad, estado, codigo_postal, dias_credito, sitio_web) values
+  ('Laboratorios Holland', 'Laboratorios Holland S.A. de C.V.', 'LHO950612AB3', 'Patricia Morales', '777 312 4410', 'ventas@holland.mx', 'Av. Morelos Sur 120', 'Cuernavaca', 'Morelos', '62050', 30, 'holland.mx'),
+  ('Distribuidora Vetmex', 'Distribuidora Vetmex S.A. de C.V.', 'DVE080314K21', 'Ricardo Salgado', '55 5523 9087', 'pedidos@vetmex.mx', 'Calz. de Tlalpan 3402', 'Coyoacán', 'Ciudad de México', '04650', 15, 'vetmex.mx'),
+  ('Zoetis México', 'Zoetis México S. de R.L. de C.V.', 'ZME130101QW8', 'Gabriela Ortiz', '55 5081 7700', 'atencion@zoetis.mx', 'Paseo de la Reforma 505', 'Cuauhtémoc', 'Ciudad de México', '06500', 45, 'zoetis.mx'),
+  ('Suministros Médicos del Sur', 'Suministros Médicos del Sur S.A. de C.V.', 'SMS111125HJ4', 'Hugo Benítez', '777 318 2295', 'contacto@smsur.mx', 'Blvd. Juárez 88', 'Cuernavaca', 'Morelos', '62000', 0, null)
 on conflict (nombre) do nothing;
 
 insert into inventario (nombre, categoria, unidad, cantidad, stock_minimo, precio, caducidad, proveedor_id)

@@ -10,3 +10,7 @@ export const fecha = new Intl.DateTimeFormat("es-MX", {
   year: "numeric",
   timeZone: "UTC",
 });
+
+// Para buscar sin importar mayúsculas ni acentos: "Vacuna Antirrábica" → "vacuna antirrabica"
+export const normalizar = (texto: string) =>
+  texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");

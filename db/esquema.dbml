@@ -12,10 +12,17 @@ Project VetCareHub {
 Table proveedores {
   id uuid [pk, default: `gen_random_uuid()`]
   nombre text [not null, unique]
+  razon_social text
+  rfc text [note: '12 o 13 caracteres, en mayúsculas']
   contacto text [note: 'Representante del laboratorio o distribuidor']
   telefono text
   correo text
   direccion text
+  ciudad text
+  estado text
+  codigo_postal text [note: '5 dígitos']
+  dias_credito integer [not null, default: 0, note: '0 es de contado']
+  sitio_web text
   creado_en timestamptz [not null, default: `now()`]
   actualizado_en timestamptz [not null, default: `now()`]
 }
@@ -30,6 +37,7 @@ Table inventario {
   precio "numeric(10,2)" [not null, default: 0]
   caducidad date
   proveedor_id uuid [ref: > proveedores.id]
+  activo boolean [not null, default: true, note: 'Los productos se deshabilitan en lugar de borrarse']
   creado_en timestamptz [not null, default: `now()`]
   actualizado_en timestamptz [not null, default: `now()`]
 
