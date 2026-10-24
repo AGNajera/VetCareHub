@@ -1,5 +1,6 @@
 ---
 import SidebarMobile from "./SidebarMobile.astro";
+import AccesoSistema from "./AccesoSistema.astro";
 import MenuIcon from "../assets/menu-2.svg";
 import Logo from "../assets/logo.svg";
 
@@ -10,6 +11,10 @@ const enlaces = [
 
 // Sin la diagonal del final, porque en el build la ruta llega como /nosotros/
 const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
+
+// En las páginas estáticas el enlace al sistema se pide al servidor después (server:defer);
+// el login y el dashboard ya corren en el servidor y lo pintan de una vez
+const estatica = Astro.isPrerendered;
 ---
 
 <header>
@@ -30,6 +35,17 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
         </a>
       ))
     }
+    {
+      estatica ? (
+        <AccesoSistema server:defer actual={actual}>
+          <a slot="fallback" href="/login">
+            Acceder al sistema
+          </a>
+        </AccesoSistema>
+      ) : (
+        <AccesoSistema actual={actual} />
+      )
+    }
   </nav>
   <a href="/" class="brand-mobile">VetCareHub</a>
   <div class="logo-mobile">
@@ -37,7 +53,7 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
   </div>
 </header>
 
-<SidebarMobile />
+<SidebarMobile estatica={estatica} />
 
 <script>
   const toggle = document.querySelector<HTMLButtonElement>(".menu-toggle");
@@ -47,7 +63,8 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
   );
 
   if (toggle && sidebar && backdrop) {
-    const links = sidebar.querySelectorAll<HTMLAnchorElement>("a");
+    // Se buscan cada vez porque el enlace al sistema llega después de cargar la página
+    const links = () => sidebar.querySelectorAll<HTMLAnchorElement>("a");
     const isOpen = () => toggle.getAttribute("aria-expanded") === "true";
 
     const setOpen = (open: boolean) => {
@@ -59,14 +76,14 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
       sidebar.inert = !open;
       // Evita que la página de fondo se desplace con el menú abierto
       document.documentElement.style.overflow = open ? "hidden" : "";
-      if (open) links[0]?.focus();
+      if (open) links()[0]?.focus();
     };
 
     toggle.addEventListener("click", () => setOpen(!isOpen()));
     backdrop.addEventListener("click", () => setOpen(false));
-    links.forEach((link) =>
-      link.addEventListener("click", () => setOpen(false)),
-    );
+    sidebar.addEventListener("click", (event) => {
+      if ((event.target as Element).closest("a")) setOpen(false);
+    });
 
     document.addEventListener("keydown", (event) => {
       if (!isOpen()) return;
@@ -79,7 +96,8 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
 
       // El foco da vueltas entre el botón de cerrar y los enlaces del sidebar
       if (event.key !== "Tab") return;
-      const last = links[links.length - 1];
+      const todos = links();
+      const last = todos[todos.length - 1];
       if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
         toggle.focus();
@@ -166,7 +184,8 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
     max-width: 100%;
     overflow-x: auto;
 
-    a {
+    /* :global porque el enlace al sistema lo pinta AccesoSistema.astro */
+    :global(a) {
       padding: 14px 20px;
       border-right: var(--border);
       text-align: center;

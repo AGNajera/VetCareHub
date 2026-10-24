@@ -22,3 +22,9 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# contraseñas que genera scripts/crear-cuentas.ts
+cuentas.local.txt
+
+# build del adaptador de Vercel
+.vercel/
