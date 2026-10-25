@@ -195,9 +195,6 @@ const categorias = ["medicamento", "vacuna", "material", "alimento", "higiene"];
     )
   }
 
-  <!-- Lo que cambia con + y − se lee en voz alta a quien usa lector de pantalla -->
-  <p class="visualmente-oculto" role="status" aria-live="polite" id="aviso"></p>
-
   {
     puedeCrear && (
       <dialog id="nuevo-producto" class="dialogo" aria-labelledby="titulo-nuevo">
@@ -373,7 +370,7 @@ const categorias = ["medicamento", "vacuna", "material", "alimento", "higiene"];
     text-underline-offset: 3px;
 
     &:hover {
-      color: var(--color-accent);
+      color: var(--color-accent-texto);
     }
 
     &:focus-visible {
@@ -439,9 +436,9 @@ const categorias = ["medicamento", "vacuna", "material", "alimento", "higiene"];
     }
   }
 
-  /* Los deshabilitados se quedan a la vista pero apagados */
+  /* Los deshabilitados se quedan a la vista pero apagados, sin bajar de 4.5:1 */
   tr.inactivo td:not(.fija-fin) {
-    color: color-mix(in oklch, var(--color-primary) 45%, white);
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
   }
 
   tr.inactivo .producto {

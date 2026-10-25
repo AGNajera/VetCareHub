@@ -11,27 +11,43 @@ import Logo from "../assets/logo.svg";
 <footer id="contacto">
   <ul class="socials" aria-label="Redes sociales">
     <li>
-      <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook">
+      <a
+        href="https://facebook.com"
+        target="_blank"
+        rel="noopener"
+        aria-label="Facebook (se abre en otra pestaña)"
+      >
         <FacebookIcon aria-hidden="true" />
       </a>
     </li>
     <li>
-      <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+      <a
+        href="https://instagram.com"
+        target="_blank"
+        rel="noopener"
+        aria-label="Instagram (se abre en otra pestaña)"
+      >
         <InstagramIcon aria-hidden="true" />
       </a>
     </li>
     <li>
-      <a href="https://tiktok.com" target="_blank" rel="noopener" aria-label="TikTok">
+      <a
+        href="https://tiktok.com"
+        target="_blank"
+        rel="noopener"
+        aria-label="TikTok (se abre en otra pestaña)"
+      >
         <TikTokIcon aria-hidden="true" />
       </a>
     </li>
   </ul>
   <aside class="contact-list">
     <Logo class="footer-logo" aria-hidden="true" />
-    <h3>Contacto</h3>
+    <!-- h2 y no h3: en la página no hay un h2 arriba del que dependa -->
+    <h2>Contacto</h2>
     <div class="contact-phone">
       <PhoneIcon aria-hidden="true" />
-      <p>7771234567</p>
+      <a href="tel:+527771234567">777 123 4567</a>
     </div>
     <div class="contact-address">
       <MapIcon aria-hidden="true" />
@@ -109,7 +125,7 @@ import Logo from "../assets/logo.svg";
     height: 64px;
   }
 
-  h3 {
+  h2 {
     margin: 4px 0 8px;
     font-size: 1.5rem;
     font-family: var(--font-bold);

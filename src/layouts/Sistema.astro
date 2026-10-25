@@ -107,7 +107,7 @@ const iniciales = user.name
       </div>
     </aside>
 
-    <main class="contenido">
+    <main id="contenido" class="contenido">
       <!-- Junto al título, lo que la página pone en el slot "acciones": el buscador y el
            botón de Nuevo -->
       <div class="encabezado">
@@ -119,6 +119,9 @@ const iniciales = user.name
 
     <!-- Errores de las acciones de la tabla (+, −, deshabilitar, borrar) -->
     <p id="aviso-error" class="aviso-error" role="alert" hidden></p>
+    <!-- Lo que cambia sin recargar (+ y −, el buscador) se lee en voz alta a quien usa
+         lector de pantalla -->
+    <p id="aviso" class="visualmente-oculto" role="status"></p>
   </div>
 </Layout>
 
@@ -140,6 +143,12 @@ const iniciales = user.name
 
   quien?.addEventListener("click", () => abrirMenu(menu?.hidden ?? false));
 
+  // También se cierra cuando el foco sale de la cuenta con Tab
+  document.querySelector(".cuenta")?.addEventListener("focusout", (event) => {
+    const destino = (event as FocusEvent).relatedTarget as Element | null;
+    if (destino && !destino.closest(".cuenta")) abrirMenu(false);
+  });
+
   document.addEventListener("click", (event) => {
     if (!(event.target as Element).closest(".cuenta")) abrirMenu(false);
   });
@@ -154,6 +163,7 @@ const iniciales = user.name
   const abrir = document.querySelector<HTMLButtonElement>(".abrir");
   const sidebar = document.querySelector<HTMLElement>("#sidebar-sistema");
   const fondo = document.querySelector<HTMLElement>("[data-fondo]");
+  const contenido = document.querySelector<HTMLElement>("#contenido");
   const celular = matchMedia("(max-width: 820px)");
 
   const abrirSidebar = (abierto: boolean) => {
@@ -164,6 +174,8 @@ const iniciales = user.name
     fondo.toggleAttribute("data-abierto", abierto);
     // Cerrado en celular, sus enlaces no se alcanzan con Tab
     sidebar.inert = celular.matches && !abierto;
+    // Abierto, lo de atrás tampoco: el foco se queda entre la barra y el sidebar
+    if (contenido) contenido.inert = abierto;
     document.documentElement.style.overflow = abierto ? "hidden" : "";
     if (abierto) sidebar.querySelector<HTMLElement>("a")?.focus();
   };
@@ -365,7 +377,7 @@ const iniciales = user.name
   .iniciales {
     display: grid;
     place-items: center;
-    background-color: var(--color-accent);
+    background-color: var(--color-accent-texto);
     color: var(--color-white);
     font-family: var(--font-bold);
     font-size: 1rem;
@@ -388,7 +400,7 @@ const iniciales = user.name
   }
 
   .rol {
-    color: var(--color-accent);
+    color: var(--color-accent-texto);
     font-size: 0.95rem;
   }
 
@@ -433,7 +445,7 @@ const iniciales = user.name
       }
 
       :global(a) {
-        color: var(--color-accent);
+        color: var(--color-accent-texto);
         font-family: var(--font-bold);
 
         &:focus-visible {
@@ -621,8 +633,9 @@ const iniciales = user.name
         outline-offset: 2px;
       }
 
+      /* 65% para que llegue a 4.5:1 sobre blanco */
       &::placeholder {
-        color: color-mix(in oklch, var(--color-primary) 50%, white);
+        color: color-mix(in oklch, var(--color-primary) 65%, white);
       }
     }
 
@@ -797,10 +810,11 @@ const iniciales = user.name
       display: block;
     }
 
+    /* Encima del sidebar para que el botón siga a la vista y sirva para cerrarlo */
     .barra {
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 40;
       display: flex;
       align-items: center;
       height: var(--header-height);
@@ -850,6 +864,7 @@ const iniciales = user.name
       left: 0;
       z-index: 30;
       width: min(85vw, var(--ancho-sidebar));
+      padding-top: var(--header-height);
       translate: -100% 0;
       transition: translate 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -904,16 +919,6 @@ const iniciales = user.name
     box-shadow: 0 6px 0 color-mix(in oklch, #b42318 25%, transparent);
     translate: -50% 0;
     animation: aparecer 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-
-  /* Para lectores de pantalla: no se ve pero se lee */
-  :global(.visualmente-oculto) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 
   @keyframes aparecer {

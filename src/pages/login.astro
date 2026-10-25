@@ -14,7 +14,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
     <Header />
     <!-- A la izquierda el formulario y a la derecha Canela en su cuarto: la pared menta y
          el piso son los de su ilustración -->
-    <main class="acceso">
+    <main id="contenido" class="acceso">
       <section class="lado-form">
         <form class="formulario" novalidate>
           <h1>Acceder al sistema</h1>
@@ -29,6 +29,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
             name="email"
             autocomplete="username"
             placeholder="apellido.nombre@vetcarehub.mx"
+            aria-describedby="error-acceso"
             required
           />
 
@@ -39,6 +40,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
               type="password"
               name="password"
               autocomplete="current-password"
+              aria-describedby="error-acceso"
               required
             />
             <button
@@ -65,7 +67,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
             </button>
           </div>
 
-          <p class="error" role="alert" aria-live="assertive"></p>
+          <p id="error-acceso" class="error" role="alert"></p>
 
           <button type="submit" class="entrar">Entrar</button>
         </form>
@@ -89,6 +91,16 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
   const password = form?.querySelector<HTMLInputElement>("#password");
   const ver = form?.querySelector<HTMLButtonElement>(".ver");
   const canela = document.querySelector<SVGElement>(".canela");
+  const campos = form?.querySelectorAll<HTMLInputElement>("#email, #password");
+
+  // Con el error a la vista los dos campos se marcan como inválidos para el lector de
+  // pantalla: el mensaje no dice cuál de los dos estaba mal
+  const marcarInvalidos = (invalidos: boolean) =>
+    campos?.forEach((campo) =>
+      invalidos
+        ? campo.setAttribute("aria-invalid", "true")
+        : campo.removeAttribute("aria-invalid"),
+    );
 
   const mostrarPassword = (mostrar: boolean) => {
     if (!password || !ver) return;
@@ -114,6 +126,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
     // Se vuelve a ocultar para que el navegador no la guarde ni la deje a la vista
     mostrarPassword(false);
     error.textContent = "";
+    marcarInvalidos(false);
     entrar.disabled = true;
     entrar.textContent = "Entrando…";
     // Canela mueve la cola mientras se revisa la cuenta
@@ -135,6 +148,7 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
       fallo.status === 429
         ? "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
         : "El correo o la contraseña no son correctos.";
+    marcarInvalidos(fallo.status !== 429);
     canela?.classList.remove("esperando");
     entrar.disabled = false;
     entrar.textContent = "Entrar";
@@ -257,8 +271,9 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
     /* 16px o más para que Safari en iPhone no haga zoom al escribir */
     font-size: 1.05rem;
 
+    /* 65% para que llegue a 4.5:1 sobre blanco */
     &::placeholder {
-      color: color-mix(in oklch, var(--color-primary) 55%, white);
+      color: color-mix(in oklch, var(--color-primary) 65%, white);
     }
 
     &:focus-visible {

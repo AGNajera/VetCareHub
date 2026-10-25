@@ -74,6 +74,14 @@ const images = [
         />
       ))}
     </div>
+    <!-- Lo que se mueve solo debe poder detenerse: este botón para el avance y las
+         ilustraciones que se animan solas en táctil -->
+    <button class="pausa" type="button" aria-label="Pausar carrusel">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path class="icono-pausa" d="M9 6v12M15 6v12"></path>
+        <path class="icono-play" d="M8 6v12l10-6z"></path>
+      </svg>
+    </button>
     <button class="arrow next" type="button" aria-label="Imagen siguiente">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M9 6l6 6l-6 6"></path>
@@ -91,6 +99,7 @@ const images = [
       ...carrusel.querySelectorAll<HTMLParagraphElement>(".caption"),
     ];
     const dots = [...carrusel.querySelectorAll<HTMLButtonElement>(".dot")];
+    const pausa = carrusel.querySelector<HTMLButtonElement>(".pausa");
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -100,6 +109,8 @@ const images = [
     let current = 0;
     let timer = 0;
     let fuera = false;
+    // Con movimiento reducido empieza detenido; el botón de pausa lo puede echar a andar
+    let pausado = reduceMotion;
     const INTERVALO = 3000;
     // Distancia mínima en px para que un deslizamiento cuente como cambio de imagen
     const DESLIZAR = 40;
@@ -129,7 +140,7 @@ const images = [
     // Avance automático cada 3s. Se pausa con el mouse encima, con el foco dentro y
     // cuando el carrusel no está en pantalla
     function start() {
-      if (reduceMotion || fuera) return;
+      if (pausado || fuera) return;
       stop();
       timer = window.setInterval(() => show(current + 1), INTERVALO);
     }
@@ -148,6 +159,21 @@ const images = [
       .querySelector(".next")
       ?.addEventListener("click", () => cambiar(current + 1));
     dots.forEach((dot, i) => dot.addEventListener("click", () => cambiar(i)));
+
+    const marcarPausa = () => {
+      carrusel.toggleAttribute("data-pausado", pausado);
+      pausa?.setAttribute(
+        "aria-label",
+        pausado ? "Reproducir carrusel" : "Pausar carrusel",
+      );
+    };
+
+    pausa?.addEventListener("click", () => {
+      pausado = !pausado;
+      marcarPausa();
+      if (pausado) stop();
+      // El foco está en el botón y focusout no llega, así que arranca hasta que salga
+    });
 
     // Se usan los eventos de pointer para poder ignorar los toques: en táctil un toque
     // también dispara mouseenter, pero mouseleave no llega hasta tocar en otro lado y el
@@ -199,6 +225,7 @@ const images = [
       else start();
     }).observe(carrusel);
 
+    marcarPausa();
     carrusel.toggleAttribute("data-tactil", tactil);
     if (tactil) images[current].classList.add("recorrido");
     start();
@@ -282,7 +309,7 @@ const images = [
     /* Con mouse se animan al pasar por la imagen. En táctil (data-tactil lo pone el script)
        se anima sola la imagen activa, mientras el carrusel está en pantalla */
     .carrusel:not([data-tactil]) .images:hover,
-    .carrusel[data-tactil]:not([data-fuera]) .image.is-active {
+    .carrusel[data-tactil]:not([data-fuera], [data-pausado]) .image.is-active {
       :global(.cola) {
         transform-origin: left bottom;
         animation: menear 0.8s ease-in-out infinite;
@@ -447,9 +474,63 @@ const images = [
     }
   }
 
+  /* En escritorio las flechas van con position absolute; aquí quedan los puntos y la pausa */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .dots {
     display: flex;
-    gap: 10px;
+  }
+
+  .pausa {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--border);
+    border-radius: 50%;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    cursor: pointer;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icono-play {
+      display: none;
+      fill: currentColor;
+    }
+
+    &:hover {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 3px;
+    }
+  }
+
+  .carrusel[data-pausado] .pausa {
+    .icono-pausa {
+      display: none;
+    }
+
+    .icono-play {
+      display: inline;
+    }
   }
 
   /* En celular la imagen ocupa todo el ancho (menos el padding) y las flechas dejan de
@@ -473,22 +554,34 @@ const images = [
     }
   }
 
+  /* El botón mide 24px para que sea fácil de tocar; el punto de 12px se dibuja adentro */
   .dot {
-    width: 12px;
-    height: 12px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    border: var(--border);
+    border: none;
     border-radius: 50%;
-    background: transparent;
+    background: none;
     cursor: pointer;
 
-    &[aria-current="true"] {
+    &::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border: var(--border);
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+
+    &[aria-current="true"]::before {
       background-color: var(--color-primary);
     }
 
     &:focus-visible {
       outline: var(--focus-ring);
-      outline-offset: 2px;
+      outline-offset: -3px;
     }
   }
 </style>
