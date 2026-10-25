@@ -9,6 +9,10 @@ export const activarBuscador = (buscador: HTMLInputElement | null, tabla: HTMLEl
   if (!buscador || !tabla) return;
   const filas = [...tabla.querySelectorAll<HTMLTableRowElement>("tbody tr")];
   const sinResultados = document.querySelector<HTMLElement>(".sin-resultados");
+  // Cuántas filas quedaron se lee en voz alta (el aviso está en src/layouts/Sistema.astro),
+  // cuando se deja de escribir para no leerlo a cada letra
+  const aviso = document.querySelector<HTMLElement>("#aviso");
+  let espera: ReturnType<typeof setTimeout> | undefined;
 
   buscador.addEventListener("input", () => {
     const texto = normalizar(buscador.value.trim());
@@ -22,6 +26,14 @@ export const activarBuscador = (buscador: HTMLInputElement | null, tabla: HTMLEl
       sinResultados.hidden = visibles > 0;
       sinResultados.textContent = `Nada coincide con “${buscador.value.trim()}”.`;
     }
+    clearTimeout(espera);
+    espera = setTimeout(() => {
+      if (!aviso) return;
+      aviso.textContent =
+        visibles === 0
+          ? "Sin resultados"
+          : `${visibles} ${visibles === 1 ? "resultado" : "resultados"}`;
+    }, 500);
   });
 };
 

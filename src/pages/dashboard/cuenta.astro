@@ -35,7 +35,14 @@ const datos = [
       <h2 id="titulo-password">Cambiar contraseña</h2>
       <form class="formulario" novalidate>
         <label for="actual">Contraseña actual</label>
-        <input id="actual" type="password" name="actual" autocomplete="current-password" required />
+        <input
+          id="actual"
+          type="password"
+          name="actual"
+          autocomplete="current-password"
+          aria-describedby="mensaje-password"
+          required
+        />
 
         <label for="nueva">Contraseña nueva</label>
         <input
@@ -49,7 +56,7 @@ const datos = [
         />
         <p id="nueva-ayuda" class="ayuda">Al menos 8 caracteres.</p>
 
-        <p class="mensaje" role="status" aria-live="polite"></p>
+        <p id="mensaje-password" class="mensaje" role="status"></p>
 
         <button type="submit" class="guardar">Guardar contraseña</button>
       </form>
@@ -63,6 +70,7 @@ const datos = [
   const form = document.querySelector<HTMLFormElement>(".formulario");
   const mensaje = form?.querySelector<HTMLElement>(".mensaje");
   const guardar = form?.querySelector<HTMLButtonElement>(".guardar");
+  const actual = form?.querySelector<HTMLInputElement>("#actual");
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -71,6 +79,7 @@ const datos = [
     const datos = new FormData(form);
     mensaje.textContent = "";
     mensaje.classList.remove("error");
+    actual?.removeAttribute("aria-invalid");
     guardar.disabled = true;
 
     // Cierra la sesión en los demás dispositivos, por si alguien más conocía la anterior
@@ -83,6 +92,10 @@ const datos = [
     guardar.disabled = false;
     if (error) {
       mensaje.classList.add("error");
+      if (error.code === "INVALID_PASSWORD") {
+        actual?.setAttribute("aria-invalid", "true");
+        actual?.focus();
+      }
       mensaje.textContent =
         error.code === "INVALID_PASSWORD"
           ? "La contraseña actual no es correcta."
@@ -175,15 +188,16 @@ const datos = [
 
   .mensaje {
     margin: 0 0 16px;
-    color: var(--color-accent);
+    color: var(--color-accent-texto);
     line-height: 1.4;
 
     &.error {
       color: #b42318;
     }
 
+    /* Sin display: none, porque un role="status" oculto no siempre se lee al aparecer */
     &:empty {
-      display: none;
+      margin: 0;
     }
   }
 

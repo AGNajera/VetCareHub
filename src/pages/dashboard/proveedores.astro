@@ -142,6 +142,7 @@ const web = (sitio: string) => (/^https?:\/\//.test(sitio) ? sitio : `https://${
                     {p.sitio_web ? (
                       <a href={web(p.sitio_web)} target="_blank" rel="noopener noreferrer">
                         {p.sitio_web}
+                        <span class="visualmente-oculto">(se abre en otra pestaña)</span>
                       </a>
                     ) : (
                       "—"
@@ -150,6 +151,9 @@ const web = (sitio: string) => (/^https?:\/\//.test(sitio) ? sitio : `https://${
                   <td class="numero">
                     <a href="/dashboard/inventario" class="secundario">
                       {numero.format(p.productos)}
+                      <span class="visualmente-oculto">
+                        {p.productos === 1 ? "producto" : "productos"} de {p.nombre}, ver inventario
+                      </span>
                     </a>
                   </td>
                   {conAcciones && (
@@ -309,7 +313,7 @@ const web = (sitio: string) => (/^https?:\/\//.test(sitio) ? sitio : `https://${
     text-underline-offset: 3px;
 
     &:hover {
-      color: var(--color-accent);
+      color: var(--color-accent-texto);
     }
 
     &:focus-visible {

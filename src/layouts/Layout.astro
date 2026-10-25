@@ -33,6 +33,8 @@ const {
     <title>{titulo ? `${titulo} | VetCareHub` : "VetCareHub"}</title>
   </head>
   <body>
+    <!-- Primer elemento con Tab: brinca el menú y lleva directo al main de cada página -->
+    <a href="#contenido" class="saltar">Saltar al contenido</a>
     <slot />
   </body>
 </html>
@@ -54,6 +56,8 @@ const {
   :root {
     --color-primary: #01215b;
     --color-accent: #3f8f7a;
+    /* El verde de arriba no llega a 4.5:1 sobre blanco; para texto chico va este, más oscuro */
+    --color-accent-texto: #2e6f5e;
     /* Menta de las ilustraciones del carrusel */
     --color-mint: #dff0ea;
     --color-white: #fff;
@@ -88,6 +92,38 @@ const {
     scroll-behavior: smooth;
     /* Evita que el header sticky tape los títulos al navegar con anclas */
     scroll-padding-top: 64px;
+  }
+
+  /* Escondido arriba de la pantalla hasta que recibe el foco */
+  .saltar {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 100;
+    padding: 10px 16px;
+    border: var(--border);
+    border-radius: 8px;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    text-decoration: none;
+    translate: 0 calc(-100% - 16px);
+
+    &:focus {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+      translate: 0 0;
+    }
+  }
+
+  /* Para lectores de pantalla: no se ve pero se lee */
+  .visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* Secciones de contenido debajo del hero: mismo ancho, márgenes y títulos */
