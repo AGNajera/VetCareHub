@@ -9,7 +9,10 @@ export const prerender = false;
 if (Astro.locals.user) return Astro.redirect("/dashboard");
 ---
 
-<Layout titulo="Acceder al sistema" descripcion="Acceso al sistema interno de VetCareHub.">
+<Layout
+  titulo="Sistema VetCare"
+  descripcion="Acceso al sistema interno de VetCareHub."
+>
   <div class="page">
     <Header />
     <!-- A la izquierda el formulario y a la derecha Canela en su cuarto: la pared menta y
@@ -17,9 +20,9 @@ if (Astro.locals.user) return Astro.redirect("/dashboard");
     <main id="contenido" class="acceso">
       <section class="lado-form">
         <form class="formulario" novalidate>
-          <h1>Acceder al sistema</h1>
+          <h1>Sistema VetCare</h1>
           <p class="intro">
-            Para el personal de la clínica. Tu cuenta te la da la gerencia.
+            Para el personal y los clientes de la clínica. Tu cuenta te la da la gerencia.
           </p>
 
           <label for="email">Correo</label>

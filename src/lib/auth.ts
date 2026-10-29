@@ -47,7 +47,7 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [admin({ ac, roles, defaultRole: "personal", adminRoles: ["gerencia"] })],
+  plugins: [admin({ ac, roles, defaultRole: "cliente", adminRoles: ["gerencia"] })],
 });
 
 export type Sesion = typeof auth.$Infer.Session;

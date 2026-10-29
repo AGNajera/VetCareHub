@@ -1,0 +1,167 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { normalizar } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const permisos = acciones(user.role, "clientes");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+
+type Cliente = { id: string; name: string; email: string; createdAt: Date };
+
+const clientes = puedeVer
+  ? (
+      await pool.query<Cliente>(
+        `select id, name, email, "createdAt" from "user" where role = 'cliente' order by name`,
+      )
+    ).rows
+  : [];
+
+const fecha = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" });
+---
+
+<Sistema titulo="Clientes">
+  {
+    puedeVer && clientes.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar cliente</span>
+        <Icono nombre="buscar" />
+        <input id="buscar" type="search" placeholder="Buscar por nombre o correo" autocomplete="off" />
+      </label>
+    )
+  }
+  {
+    puedeCrear && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+        <Icono nombre="mas" />
+        Nuevo cliente
+      </button>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a los clientes.</p>
+    ) : clientes.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay clientes.
+        {puedeCrear && " Da de alta al primero con Nuevo cliente."}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Clientes">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Cliente</th>
+                <th>Correo</th>
+                <th>Alta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientes.map((c) => (
+                <tr data-buscar={normalizar([c.name, c.email].join(" "))}>
+                  <td class="fija-inicio nombre">{c.name}</td>
+                  <td>
+                    <a href={`mailto:${c.email}`}>{c.email}</a>
+                  </td>
+                  <td class="secundario">{fecha.format(c.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {
+    puedeCrear && (
+      <dialog id="cliente" class="dialogo" aria-labelledby="titulo-cliente">
+        <form novalidate>
+          <h2 id="titulo-cliente">Nuevo cliente</h2>
+          <div class="campos">
+            <div class="campo ancho">
+              <label for="cl-nombre">Nombre</label>
+              <input id="cl-nombre" name="nombre" autocomplete="off" required />
+            </div>
+            <div class="campo ancho">
+              <label for="cl-correo">Correo</label>
+              <input id="cl-correo" name="correo" type="email" autocomplete="off" required />
+            </div>
+            <div class="campo ancho">
+              <label for="cl-password">Contraseña inicial</label>
+              <input
+                id="cl-password"
+                name="password"
+                type="text"
+                autocomplete="off"
+                minlength="8"
+                aria-describedby="cl-password-ayuda"
+                required
+              />
+              <p id="cl-password-ayuda" class="secundario ayuda">
+                Al menos 8 caracteres. Entrégasela al cliente; podrá cambiarla en Mi cuenta.
+              </p>
+            </div>
+          </div>
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">Dar de alta</button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarBuscador, enviarConAccion } from "../../scripts/sistema";
+
+  activarBuscador(
+    document.querySelector("#buscar"),
+    document.querySelector<HTMLTableElement>("#tabla"),
+  );
+
+  const dialogo = document.querySelector<HTMLDialogElement>("#cliente");
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => {
+    dialogo?.querySelector("form")?.reset();
+    dialogo?.showModal();
+  });
+  enviarConAccion(dialogo, (datos) => actions.clientes.crear(datos));
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  td a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent-texto);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .ayuda {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+</style>

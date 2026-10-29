@@ -2,44 +2,69 @@
 import Sistema from "../../layouts/Sistema.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
 import { numero } from "../../lib/formato";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
 
-// Los deshabilitados no cuentan: ya no se usan en la clínica
-const { rows } = await pool.query<{ usuarios: number; productos: number; agotandose: number }>(
-  `select (select count(*) from "user")::int as usuarios,
-          count(*)::int as productos,
-          count(*) filter (where cantidad <= stock_minimo)::int as agotandose
-   from inventario
-   where activo`,
-);
-const { usuarios, productos, agotandose } = rows[0];
+const esCliente = user.role === "cliente";
 
-// La de productos lleva al inventario; las demás todavía no tienen página
-const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string }[] = [
-  {
-    titulo: "Usuarios",
-    valor: numero.format(usuarios),
-    nota: "Cuentas del personal",
-    icono: "usuarios",
-  },
-  {
-    titulo: "Productos",
-    valor: numero.format(productos),
-    nota: agotandose ? `${agotandose} por agotarse` : "Todo con existencias",
-    icono: "inventario",
-    href: "/dashboard/inventario",
-  },
-  {
-    titulo: "Clientes",
-    valor: "—",
-    nota: "Aún sin registro",
-    icono: "clientes",
-  },
-];
+// Los deshabilitados no cuentan: ya no se usan en la clínica
+const { rows } = esCliente
+  ? { rows: [{ usuarios: 0, clientes: 0, productos: 0, agotandose: 0 }] }
+  : await pool.query<{ usuarios: number; clientes: number; productos: number; agotandose: number }>(
+      `select (select count(*) from "user" where role <> 'cliente')::int as usuarios,
+              (select count(*) from "user" where role = 'cliente')::int as clientes,
+              count(*)::int as productos,
+              count(*) filter (where cantidad <= stock_minimo)::int as agotandose
+       from inventario
+       where activo`,
+    );
+const { usuarios, clientes, productos, agotandose } = rows[0];
+
+type Tarjeta = { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string };
+
+// Las que llevan a una página son enlaces; las demás todavía no tienen página
+const tarjetas: Tarjeta[] = esCliente
+  ? [
+      {
+        titulo: "Mi cuenta",
+        valor: user.name.split(" ")[0],
+        nota: user.email,
+        icono: "cuenta",
+        href: "/dashboard/cuenta",
+      },
+      {
+        titulo: "Mis mascotas",
+        valor: "—",
+        nota: "Próximamente",
+        icono: "inventario",
+      },
+    ]
+  : [
+      {
+        titulo: "Usuarios",
+        valor: numero.format(usuarios),
+        nota: "Cuentas del personal",
+        icono: "usuarios",
+      },
+      {
+        titulo: "Productos",
+        valor: numero.format(productos),
+        nota: agotandose ? `${agotandose} por agotarse` : "Todo con existencias",
+        icono: "inventario",
+        href: "/dashboard/inventario",
+      },
+      {
+        titulo: "Clientes",
+        valor: numero.format(clientes),
+        nota: clientes ? "Cuentas de clientes" : "Aún sin registro",
+        icono: "clientes",
+        href: acciones(user.role, "clientes").includes("ver") ? "/dashboard/clientes" : undefined,
+      },
+    ];
 ---
 
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>

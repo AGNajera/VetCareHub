@@ -1,7 +1,7 @@
 ---
 // Enlace al sistema del header y del menú de celular. Las páginas son estáticas, así
 // que este enlace se pide aparte al servidor (server:defer) para saber si hay sesión.
-// Mientras llega se ve el de "Acceder al sistema", que es el mismo para quien no entró
+// Mientras llega se ve el de "Sistema VetCare", que es el mismo para quien no entró
 const { actual } = Astro.props;
 const conSesion = Boolean(Astro.locals.user);
 const href = conSesion ? "/dashboard" : "/login";
@@ -9,7 +9,9 @@ const href = conSesion ? "/dashboard" : "/login";
 
 <a
   href={href}
-  aria-current={actual === "/login" || actual === "/dashboard" ? "page" : undefined}
+  aria-current={actual === "/login" || actual === "/dashboard"
+    ? "page"
+    : undefined}
 >
-  {conSesion ? "Ir al sistema" : "Acceder al sistema"}
+  {conSesion ? "Ir al sistema" : "Sistema VetCare"}
 </a>

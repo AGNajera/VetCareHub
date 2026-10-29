@@ -63,7 +63,7 @@ Table user {
   email text [not null, unique]
   emailVerified boolean [not null]
   image text
-  role text [note: 'gerencia, jefatura o personal (src/lib/permisos.ts)']
+  role text [note: 'gerencia, jefatura, personal o cliente (src/lib/permisos.ts)']
   puesto text [note: 'Puesto del organigrama (src/data/equipo.ts)']
   banned boolean
   banReason text

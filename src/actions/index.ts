@@ -1,5 +1,6 @@
 import { ActionError, defineAction, type ActionAPIContext } from "astro:actions";
 import { z } from "astro/zod";
+import { auth } from "../lib/auth";
 import { pool } from "../lib/db";
 import { acciones } from "../lib/permisos";
 
@@ -9,7 +10,7 @@ import { acciones } from "../lib/permisos";
 
 const exigir = (
   { locals }: ActionAPIContext,
-  seccion: "inventario" | "proveedores",
+  seccion: "inventario" | "proveedores" | "clientes",
   accion: string,
 ) => {
   if (!locals.user) throw new ActionError({ code: "UNAUTHORIZED" });
@@ -179,6 +180,37 @@ export const server = {
       handler: async ({ id }, context) => {
         exigir(context, "proveedores", "eliminar");
         await pool.query("delete from proveedores where id = $1", [id]);
+      },
+    }),
+  },
+
+  clientes: {
+    // La gerencia da de alta la cuenta con una contraseña inicial que el cliente puede
+    // cambiar después en Mi cuenta. Sin headers, createUser no pide sesión: el permiso
+    // ya se revisó arriba con exigir
+    crear: defineAction({
+      accept: "form",
+      input: z.object({
+        nombre: z.string().trim().min(1, "Escribe el nombre del cliente."),
+        correo: z.email("El correo no es válido.").trim().toLowerCase(),
+        password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+      }),
+      handler: async ({ nombre, correo, password }, context) => {
+        exigir(context, "clientes", "crear");
+        try {
+          await auth.api.createUser({
+            body: { email: correo, password, name: nombre, role: "cliente" },
+          });
+        } catch (error) {
+          const mensaje = error instanceof Error ? error.message : "";
+          if (/exist/i.test(mensaje)) {
+            throw new ActionError({
+              code: "CONFLICT",
+              message: `Ya hay una cuenta con el correo ${correo}.`,
+            });
+          }
+          throw error;
+        }
       },
     }),
   },

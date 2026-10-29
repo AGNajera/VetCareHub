@@ -33,7 +33,7 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
       estatica ? (
         <AccesoSistema server:defer actual={actual}>
           <a slot="fallback" href="/login">
-            Acceder al sistema
+            Sistema VetCare
           </a>
         </AccesoSistema>
       ) : (

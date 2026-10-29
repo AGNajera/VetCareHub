@@ -5,18 +5,23 @@
 import Layout from "./Layout.astro";
 import Icono, { type NombreIcono } from "../components/sistema/Icono.astro";
 import Logo from "../assets/logo.svg";
-import { nombreRol, type Rol } from "../lib/permisos";
+import { acciones, nombreRol, type Rol } from "../lib/permisos";
 import { fotoDeCorreo } from "../data/fotos";
 
 // titulo va en la pestaña; encabezado, si se pasa, es el h1 de la página
 const { titulo, encabezado = titulo } = Astro.props;
 const user = Astro.locals.user!;
 
-const secciones: { href: string; texto: string; icono: NombreIcono }[] = [
+// Cada quien ve solo las secciones que su rol puede abrir; el cliente solo tiene su panel
+const todas: { href: string; texto: string; icono: NombreIcono; permiso?: "inventario" | "proveedores" | "clientes" }[] = [
   { href: "/dashboard", texto: "Inicio", icono: "inicio" },
-  { href: "/dashboard/inventario", texto: "Inventario", icono: "inventario" },
-  { href: "/dashboard/proveedores", texto: "Proveedores", icono: "proveedores" },
+  { href: "/dashboard/inventario", texto: "Inventario", icono: "inventario", permiso: "inventario" },
+  { href: "/dashboard/proveedores", texto: "Proveedores", icono: "proveedores", permiso: "proveedores" },
+  { href: "/dashboard/clientes", texto: "Clientes", icono: "clientes", permiso: "clientes" },
 ];
+const secciones = todas.filter(
+  ({ permiso }) => !permiso || acciones(user.role, permiso).includes("ver"),
+);
 
 const actual = Astro.url.pathname.replace(/\/$/, "");
 const rol = nombreRol[user.role as Rol] ?? user.role;
