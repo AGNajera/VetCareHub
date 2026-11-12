@@ -1,16 +1,29 @@
--- Clientes y sus citas. Los clientes son cuentas de Better Auth (tabla "user") con el rol
--- cliente; las crea el personal desde /dashboard/clientes
+-- Clientes, sus mascotas y sus citas. Los clientes son cuentas de Better Auth (tabla
+-- "user") con el rol cliente; las crea el personal desde /dashboard/clientes
 
 alter table "user"
   add column if not exists telefono text;
 
-create table citas (
+create table mascotas (
   id uuid primary key default gen_random_uuid(),
-  -- Si se borra la cuenta del cliente se van sus citas
+  -- Si se borra la cuenta del cliente se van sus mascotas (y con ellas sus citas)
   cliente_id text not null references "user" (id) on delete cascade,
-  mascota text not null,
+  nombre text not null,
   especie text not null
     check (especie in ('perro', 'gato', 'ave', 'roedor', 'reptil', 'otro')),
+  raza text,
+  nacimiento date,
+  -- Alergias, carácter, lo que convenga saber antes de atenderla
+  notas text,
+  creado_en timestamptz not null default now(),
+  actualizado_en timestamptz not null default now()
+);
+
+create index mascotas_cliente_idx on mascotas (cliente_id);
+
+create table citas (
+  id uuid primary key default gen_random_uuid(),
+  mascota_id uuid not null references mascotas (id) on delete cascade,
   -- Fecha y hora de la clínica (Ciudad de México), sin zona horaria
   fecha date not null,
   -- Cada 30 minutos de 9:00 a 15:30, para terminar a las 16:00 (src/lib/citas.ts)
@@ -31,4 +44,4 @@ create table citas (
 
 -- No puede haber dos citas a la misma hora. Las canceladas no cuentan: su horario se libera
 create unique index citas_horario_unico on citas (fecha, hora) where estado <> 'cancelada';
-create index citas_cliente_idx on citas (cliente_id);
+create index citas_mascota_idx on citas (mascota_id);

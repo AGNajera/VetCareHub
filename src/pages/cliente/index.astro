@@ -9,26 +9,33 @@ export const prerender = false;
 
 const user = Astro.locals.user!;
 
+type Mascota = { id: string; nombre: string; especie: Especie; raza: string | null };
 type Cita = {
   id: string;
   mascota: string;
-  especie: Especie;
   fecha: string;
   hora: string;
   servicio: Servicio;
   estado: Estado;
 };
 
-const { rows: proximas } = await pool.query<Cita>(
-  `select id, mascota, especie, to_char(fecha, 'YYYY-MM-DD') as fecha,
-          to_char(hora, 'HH24:MI') as hora, servicio, estado
-   from citas
-   where cliente_id = $1
-     and estado in ('pendiente', 'confirmada')
-     and fecha + hora > (now() at time zone 'America/Mexico_City')
-   order by fecha, hora`,
-  [user.id],
-);
+const [{ rows: mascotas }, { rows: proximas }] = await Promise.all([
+  pool.query<Mascota>(
+    "select id, nombre, especie, raza from mascotas where cliente_id = $1 order by nombre",
+    [user.id],
+  ),
+  pool.query<Cita>(
+    `select c.id, m.nombre as mascota, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
+            to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.estado
+     from citas c
+     join mascotas m on m.id = c.mascota_id
+     where m.cliente_id = $1
+       and c.estado in ('pendiente', 'confirmada')
+       and c.fecha + c.hora > (now() at time zone 'America/Mexico_City')
+     order by c.fecha, c.hora`,
+    [user.id],
+  ),
+]);
 
 const primera = proximas[0];
 
@@ -43,11 +50,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     href: "/cliente/citas",
   },
   {
-    titulo: "Mi cuenta",
-    valor: user.name.split(" ")[0],
-    nota: user.email,
-    icono: "cuenta",
-    href: "/cliente/cuenta",
+    titulo: "Mis mascotas",
+    valor: numero.format(mascotas.length),
+    nota: mascotas.length ? mascotas.map((m) => m.nombre).join(", ") : "Registra la primera",
+    icono: "mascotas",
+    href: "/cliente/mascotas",
   },
 ];
 ---
@@ -78,7 +85,18 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     {
       proximas.length === 0 ? (
         <p class="vacio">
-          No tienes citas próximas. Agenda una en <a href="/cliente/citas">Mis citas</a>.
+          No tienes citas próximas.
+          {mascotas.length === 0 ? (
+            <>
+              {" "}
+              Primero registra a tu mascota en <a href="/cliente/mascotas">Mis mascotas</a>.
+            </>
+          ) : (
+            <>
+              {" "}
+              Agenda una en <a href="/cliente/citas">Mis citas</a>.
+            </>
+          )}
         </p>
       ) : (
         <div class="marco-tabla" tabindex="0" role="region" aria-label="Próximas citas">
@@ -98,10 +116,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                     {fecha.format(new Date(`${c.fecha}T00:00:00Z`))},{" "}
                     <strong class="hora">{c.hora}</strong>
                   </td>
-                  <td>
-                    <span class="nombre">{c.mascota}</span>
-                    <span class="secundario"> · {especies[c.especie]}</span>
-                  </td>
+                  <td class="nombre">{c.mascota}</td>
                   <td>{servicios[c.servicio]}</td>
                   <td>
                     <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>

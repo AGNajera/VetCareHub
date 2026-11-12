@@ -1,16 +1,16 @@
 ---
-// Ventana para agendar o cambiar una cita. La usan /dashboard/citas (el personal elige el
-// cliente, cualquier día y el estado, para corregir errores) y /cliente/citas (el cliente
-// agenda para sí mismo en un día que no haya pasado). Al elegir el día, la página desactiva
-// los horarios ocupados con activarHorarios (src/scripts/sistema.ts)
-import { ahoraEnClinica, especies, estados, horarios, servicios } from "../../lib/citas";
+// Ventana para agendar o cambiar una cita. La usan /dashboard/citas (el personal elige
+// cualquier mascota, cualquier día y el estado, para corregir errores) y /cliente/citas
+// (el cliente elige una de sus mascotas y un día que no haya pasado). Al elegir el día, la
+// página desactiva los horarios ocupados con activarHorarios (src/scripts/sistema.ts)
+import { ahoraEnClinica, estados, horarios, servicios } from "../../lib/citas";
 
 type Props = {
-  // Si se pasa, el personal elige de qué cliente es la cita y su estado
-  clientes?: { id: string; nombre: string; correo: string }[];
+  mascotas: { id: string; nombre: string; duenio?: string }[];
+  // Solo el personal: elegir el estado y fechas pasadas
+  personal?: boolean;
 };
-const { clientes } = Astro.props;
-const personal = Boolean(clientes);
+const { mascotas, personal = false } = Astro.props;
 const hoy = ahoraEnClinica().fecha;
 ---
 
@@ -19,30 +19,15 @@ const hoy = ahoraEnClinica().fecha;
     <h2 id="titulo-cita">Agendar cita</h2>
     <input type="hidden" name="id" />
     <div class="campos">
-      {
-        clientes && (
-          <div class="campo ancho">
-            <label for="ci-cliente">Cliente</label>
-            <select id="ci-cliente" name="cliente_id" required>
-              <option value="">Elige uno</option>
-              {clientes.map(({ id, nombre, correo }) => (
-                <option value={id}>
-                  {nombre} · {correo}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      }
-      <div class="campo">
+      <div class="campo ancho">
         <label for="ci-mascota">Mascota</label>
-        <input id="ci-mascota" name="mascota" autocomplete="off" required />
-      </div>
-      <div class="campo">
-        <label for="ci-especie">Especie</label>
-        <select id="ci-especie" name="especie" required>
+        <select id="ci-mascota" name="mascota_id" required>
           <option value="">Elige una</option>
-          {Object.entries(especies).map(([valor, texto]) => <option value={valor}>{texto}</option>)}
+          {
+            mascotas.map(({ id, nombre, duenio }) => (
+              <option value={id}>{duenio ? `${nombre} · ${duenio}` : nombre}</option>
+            ))
+          }
         </select>
       </div>
       <div class="campo ancho">

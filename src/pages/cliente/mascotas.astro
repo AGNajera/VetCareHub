@@ -1,0 +1,138 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import FormMascota from "../../components/sistema/FormMascota.astro";
+import { pool } from "../../lib/db";
+import { especies, type Especie } from "../../lib/citas";
+import { fecha, numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+
+type Mascota = {
+  id: string;
+  nombre: string;
+  especie: Especie;
+  raza: string | null;
+  nacimiento: string | null;
+  notas: string | null;
+  citas: number;
+};
+
+const { rows: mascotas } = await pool.query<Mascota>(
+  `select m.id, m.nombre, m.especie, m.raza, to_char(m.nacimiento, 'YYYY-MM-DD') as nacimiento,
+          m.notas, (select count(*)::int from citas c where c.mascota_id = m.id) as citas
+   from mascotas m
+   where m.cliente_id = $1
+   order by m.nombre`,
+  [user.id],
+);
+
+const edad = (nacimiento: string) => {
+  const meses = Math.floor((Date.now() - new Date(`${nacimiento}T00:00:00Z`).getTime()) / (30.44 * 864e5));
+  if (meses < 12) return `${meses} ${meses === 1 ? "mes" : "meses"}`;
+  const anios = Math.floor(meses / 12);
+  return `${anios} ${anios === 1 ? "año" : "años"}`;
+};
+---
+
+<Sistema titulo="Mis mascotas">
+  <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+    <Icono nombre="mas" />
+    Nueva mascota
+  </button>
+
+  {
+    mascotas.length === 0 ? (
+      <p class="vacio">Todavía no has registrado ninguna mascota. Agrega la primera con Nueva mascota.</p>
+    ) : (
+      <div class="marco-tabla" tabindex="0" role="region" aria-label="Mis mascotas">
+        <table id="tabla">
+          <thead>
+            <tr>
+              <th class="fija-inicio">Mascota</th>
+              <th>Especie</th>
+              <th>Raza</th>
+              <th>Edad</th>
+              <th>Notas</th>
+              <th class="numero">Citas</th>
+              <th class="fija-fin">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mascotas.map((m) => (
+              <tr data-datos={JSON.stringify(m)}>
+                <td class="fija-inicio nombre">{m.nombre}</td>
+                <td>{especies[m.especie]}</td>
+                <td>{m.raza ?? "—"}</td>
+                <td>
+                  {m.nacimiento ? (
+                    <span title={fecha.format(new Date(`${m.nacimiento}T00:00:00Z`))}>{edad(m.nacimiento)}</span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td class="secundario notas">{m.notas ?? "—"}</td>
+                <td class="numero">{numero.format(m.citas)}</td>
+                <td class="fija-fin">
+                  <button
+                    type="button"
+                    class="boton-icono"
+                    data-editar
+                    aria-label={`Editar ${m.nombre}`}
+                    title="Editar"
+                  >
+                    <Icono nombre="editar" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <FormMascota />
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { enviarConAccion, llenarFormulario } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  const dialogo = document.querySelector<HTMLDialogElement>("#mascota");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar) return;
+    llenarFormulario(form, datos);
+    titulo.textContent = datos ? `Editar ${datos.nombre}` : "Nueva mascota";
+    guardar.textContent = datos ? "Guardar cambios" : "Agregar mascota";
+    dialogo.showModal();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+  enviarConAccion(dialogo, (datos) => actions.mascotas.guardar(datos));
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("[data-editar]");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (fila?.dataset.datos) abrir(JSON.parse(fila.dataset.datos));
+  });
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .notas {
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>

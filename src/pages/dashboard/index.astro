@@ -24,6 +24,7 @@ const [{ rows }, { rows: proximas }] = await Promise.all([
   pool.query<{
     personal: number;
     clientes: number;
+    mascotas: number;
     citas: number;
     citas_hoy: number;
     productos: number;
@@ -31,6 +32,7 @@ const [{ rows }, { rows: proximas }] = await Promise.all([
   }>(
     `select (select count(*)::int from "user" where role <> 'cliente') as personal,
             (select count(*)::int from "user" where role = 'cliente') as clientes,
+            (select count(*)::int from mascotas) as mascotas,
             (select count(*)::int from citas
              where estado in ('pendiente', 'confirmada')
                and fecha + hora > (now() at time zone 'America/Mexico_City')) as citas,
@@ -43,17 +45,18 @@ const [{ rows }, { rows: proximas }] = await Promise.all([
      where activo`,
   ),
   pool.query<Proxima>(
-    `select c.id, c.mascota, u.name as cliente, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
+    `select c.id, m.nombre as mascota, u.name as cliente, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
             to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.estado
      from citas c
-     join "user" u on u.id = c.cliente_id
+     join mascotas m on m.id = c.mascota_id
+     join "user" u on u.id = m.cliente_id
      where c.estado in ('pendiente', 'confirmada')
        and c.fecha + c.hora > (now() at time zone 'America/Mexico_City')
      order by c.fecha, c.hora
      limit 5`,
   ),
 ]);
-const { personal, clientes, citas, citas_hoy, productos, agotandose } = rows[0];
+const { personal, clientes, mascotas, citas, citas_hoy, productos, agotandose } = rows[0];
 
 const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string }[] = [
   {
@@ -66,7 +69,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
   {
     titulo: "Clientes",
     valor: numero.format(clientes),
-    nota: clientes ? "Cuentas registradas" : "Aún sin registro",
+    nota: mascotas ? `${mascotas} ${mascotas === 1 ? "mascota" : "mascotas"}` : "Sin mascotas",
     icono: "clientes",
     href: "/dashboard/clientes",
   },

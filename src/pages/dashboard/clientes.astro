@@ -19,7 +19,7 @@ type Cliente = {
   correo: string;
   telefono: string | null;
   alta: Date;
-  citas: number;
+  mascotas: number;
   proxima: string | null;
 };
 
@@ -29,10 +29,10 @@ const clientes = puedeVer
   ? (
       await pool.query<Cliente>(
         `select u.id, u.name as nombre, u.email as correo, u.telefono, u."createdAt" as alta,
-                (select count(*)::int from citas c where c.cliente_id = u.id) as citas,
+                (select count(*)::int from mascotas m where m.cliente_id = u.id) as mascotas,
                 (select to_char(c.fecha, 'YYYY-MM-DD') || ' ' || to_char(c.hora, 'HH24:MI')
-                 from citas c
-                 where c.cliente_id = u.id and c.estado in ('pendiente', 'confirmada')
+                 from citas c join mascotas m on m.id = c.mascota_id
+                 where m.cliente_id = u.id and c.estado in ('pendiente', 'confirmada')
                    and c.fecha + c.hora > (now() at time zone 'America/Mexico_City')
                  order by c.fecha, c.hora limit 1) as proxima
          from "user" u
@@ -84,7 +84,7 @@ const fechaCita = (texto: string) => {
                 <th class="fija-inicio">Cliente</th>
                 <th>Correo</th>
                 <th>Teléfono</th>
-                <th class="numero">Citas</th>
+                <th class="numero">Mascotas</th>
                 <th>Próxima cita</th>
                 <th>Alta</th>
                 {puedeEditar && <th class="fija-fin">Acciones</th>}
@@ -103,7 +103,14 @@ const fechaCita = (texto: string) => {
                   <td>
                     {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
                   </td>
-                  <td class="numero">{numero.format(c.citas)}</td>
+                  <td class="numero">
+                    <a href={`/dashboard/mascotas?cliente=${c.id}`} class="secundario">
+                      {numero.format(c.mascotas)}
+                      <span class="visualmente-oculto">
+                        {c.mascotas === 1 ? "mascota" : "mascotas"} de {c.nombre}, ver mascotas
+                      </span>
+                    </a>
+                  </td>
                   <td>{c.proxima ? fechaCita(c.proxima) : <span class="secundario">Sin citas</span>}</td>
                   <td class="secundario">{fecha.format(c.alta)}</td>
                   {puedeEditar && (
@@ -161,7 +168,7 @@ const fechaCita = (texto: string) => {
             </div>
             <p class="ayuda ancho" data-ayuda-nuevo>
               Con el correo y una contraseña que se genera al guardar, el cliente entra en
-              Acceder al sistema a su propio panel para agendar y revisar sus citas.
+              Acceder al sistema a su propio panel, donde registra sus mascotas y agenda citas.
             </p>
           </div>
           <p class="error-form" role="alert" />

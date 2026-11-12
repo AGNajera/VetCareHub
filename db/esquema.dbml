@@ -48,11 +48,27 @@ Table inventario {
   Note: 'Si se borra el proveedor, el producto se queda con proveedor_id en null'
 }
 
-Table citas {
+Table mascotas {
   id uuid [pk, default: `gen_random_uuid()`]
   cliente_id text [not null, ref: > user.id]
-  mascota text [not null]
+  nombre text [not null]
   especie text [not null, note: 'perro, gato, ave, roedor, reptil u otro']
+  raza text
+  nacimiento date
+  notas text [note: 'Alergias, carácter, lo que convenga saber']
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    cliente_id [name: 'mascotas_cliente_idx']
+  }
+
+  Note: 'Si se borra la cuenta del cliente, se borran sus mascotas y sus citas'
+}
+
+Table citas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  mascota_id uuid [not null, ref: > mascotas.id]
   fecha date [not null]
   hora time [not null, note: 'Cada 30 minutos de 09:00 a 15:30 (hasta las 16:00)']
   servicio text [not null, note: 'consulta, vacunacion, desparasitacion, cirugia, laboratorio o estetica']
@@ -63,10 +79,8 @@ Table citas {
 
   indexes {
     (fecha, hora) [unique, name: 'citas_horario_unico', note: "where estado <> 'cancelada'"]
-    cliente_id [name: 'citas_cliente_idx']
+    mascota_id [name: 'citas_mascota_idx']
   }
-
-  Note: 'Si se borra la cuenta del cliente, se borran sus citas'
 }
 
 Table migraciones {
@@ -153,6 +167,7 @@ Table rateLimit {
 TableGroup sistema {
   proveedores
   inventario
+  mascotas
   citas
   migraciones
 }
