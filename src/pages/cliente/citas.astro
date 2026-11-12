@@ -1,0 +1,215 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import FormCita from "../../components/sistema/FormCita.astro";
+import { pool } from "../../lib/db";
+import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
+import { fecha } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+
+type Cita = {
+  id: string;
+  mascota: string;
+  especie: Especie;
+  fecha: string;
+  hora: string;
+  servicio: Servicio;
+  motivo: string | null;
+  estado: Estado;
+  editable: boolean;
+};
+
+const { rows: citas } = await pool.query<Cita>(
+  `select id, mascota, especie, to_char(fecha, 'YYYY-MM-DD') as fecha,
+          to_char(hora, 'HH24:MI') as hora, servicio, motivo, estado,
+          (estado in ('pendiente', 'confirmada')
+           and fecha + hora > (now() at time zone 'America/Mexico_City')) as editable
+   from citas
+   where cliente_id = $1
+   order by estado in ('completada', 'cancelada'),
+            case when estado in ('completada', 'cancelada') then -extract(epoch from fecha + hora)
+                 else extract(epoch from fecha + hora) end`,
+  [user.id],
+);
+
+const conEditables = citas.some((c) => c.editable);
+const claseEstado = (estado: Estado) =>
+  estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
+---
+
+<Sistema titulo="Mis citas">
+  <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+    <Icono nombre="mas" />
+    Agendar cita
+  </button>
+
+  {
+    citas.length === 0 ? (
+      <p class="vacio">Todavía no tienes citas. Agenda la primera con Agendar cita.</p>
+    ) : (
+      <div class="marco-tabla" tabindex="0" role="region" aria-label="Mis citas">
+        <table id="tabla">
+          <thead>
+            <tr>
+              <th class="fija-inicio">Fecha y hora</th>
+              <th>Mascota</th>
+              <th>Servicio</th>
+              <th>Motivo</th>
+              <th>Estado</th>
+              {conEditables && <th class="fija-fin">Acciones</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {citas.map((c) => (
+              <tr
+                class:list={[{ cancelada: c.estado === "cancelada" }]}
+                data-datos={JSON.stringify({
+                  ...c,
+                  fechaTexto: `${fecha.format(new Date(`${c.fecha}T00:00:00Z`))} a las ${c.hora}`,
+                })}
+              >
+                <td class="fija-inicio fecha">
+                  <span>{fecha.format(new Date(`${c.fecha}T00:00:00Z`))}</span>
+                  <span class="hora">{c.hora}</span>
+                </td>
+                <td>
+                  <span class="nombre">{c.mascota}</span>
+                  <span class="secundario"> · {especies[c.especie]}</span>
+                </td>
+                <td>{servicios[c.servicio]}</td>
+                <td class="secundario motivo">{c.motivo ?? "—"}</td>
+                <td>
+                  <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
+                </td>
+                {conEditables && (
+                  <td class="fija-fin">
+                    {c.editable && (
+                      <div class="acciones">
+                        <button
+                          type="button"
+                          class="boton-icono"
+                          data-editar
+                          aria-label={`Cambiar cita de ${c.mascota}`}
+                          title="Cambiar"
+                        >
+                          <Icono nombre="editar" />
+                        </button>
+                        <button
+                          type="button"
+                          class="boton-icono peligro"
+                          data-cancelar
+                          aria-label={`Cancelar cita de ${c.mascota}`}
+                          title="Cancelar"
+                        >
+                          <Icono nombre="cancelar" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <FormCita />
+
+  <dialog id="cancelar" class="dialogo dialogo-angosto" aria-labelledby="titulo-cancelar">
+    <form novalidate>
+      <h2 id="titulo-cancelar">Cancelar cita</h2>
+      <input type="hidden" name="id" />
+      <p class="dialogo-texto"></p>
+      <p class="error-form" role="alert"></p>
+      <div class="dialogo-botones">
+        <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+          Volver
+        </button>
+        <button type="submit" class="boton peligro">Cancelar cita</button>
+      </div>
+    </form>
+  </dialog>
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarHorarios, enviarConAccion, llenarFormulario } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  const dialogo = document.querySelector<HTMLDialogElement>("#cita");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+  const actualizarHorarios = activarHorarios(form, true);
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar) return;
+    llenarFormulario(form, datos);
+    titulo.textContent = datos ? `Cambiar cita de ${datos.mascota}` : "Agendar cita";
+    guardar.textContent = datos ? "Guardar cambios" : "Agendar cita";
+    dialogo.showModal();
+    actualizarHorarios();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+  enviarConAccion(dialogo, (datos) => actions.citas.guardar(datos));
+
+  const cancelar = document.querySelector<HTMLDialogElement>("#cancelar");
+  enviarConAccion(cancelar, (datos) => actions.citas.cancelar({ id: String(datos.get("id")) }));
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("button");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (!boton || !fila?.dataset.datos) return;
+    const datos = JSON.parse(fila.dataset.datos);
+
+    if (boton.hasAttribute("data-editar")) abrir(datos);
+
+    if (boton.hasAttribute("data-cancelar") && cancelar) {
+      cancelar.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      cancelar.querySelector(".dialogo-texto")!.textContent =
+        `Se cancelará la cita de ${datos.mascota} del ${datos.fechaTexto}. Ese horario quedará libre.`;
+      cancelar.showModal();
+    }
+  });
+</script>
+
+<style>
+  .fecha {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hora {
+    margin-left: 8px;
+    font-family: var(--font-bold);
+  }
+
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .motivo {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .acciones {
+    display: flex;
+    gap: 6px;
+  }
+
+  .etiqueta.inactiva {
+    background-color: var(--color-surface);
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
+  }
+
+  tr.cancelada td:not(.fija-fin) {
+    color: color-mix(in oklch, var(--color-primary) 55%, white);
+  }
+</style>

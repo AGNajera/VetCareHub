@@ -19,7 +19,8 @@ export const auth = betterAuth({
     protocol: "https",
   },
 
-  // Las cuentas las crea la gerencia (scripts/crear-cuentas.ts); nadie se registra solo
+  // Nadie se registra solo: las cuentas del personal las crea la gerencia
+  // (scripts/crear-cuentas.ts) y las de los clientes, el personal (/dashboard/clientes)
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
@@ -29,6 +30,8 @@ export const auth = betterAuth({
     additionalFields: {
       // El puesto del organigrama, para mostrarlo en el dashboard
       puesto: { type: "string", required: false, input: false },
+      // Solo los clientes; la columna la agrega db/migraciones/004-...
+      telefono: { type: "string", required: false, input: false },
     },
   },
 

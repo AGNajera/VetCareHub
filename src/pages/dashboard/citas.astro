@@ -1,0 +1,239 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import FormCita from "../../components/sistema/FormCita.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
+import { fecha, normalizar } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const permisos = acciones(user.role, "citas");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+const puedeEditar = permisos.includes("editar");
+
+type Cita = {
+  id: string;
+  cliente_id: string;
+  cliente: string;
+  telefono: string | null;
+  mascota: string;
+  especie: Especie;
+  fecha: string;
+  hora: string;
+  servicio: Servicio;
+  motivo: string | null;
+  estado: Estado;
+};
+
+// Primero las que siguen pendientes o confirmadas (de la más próxima a la más lejana) y al
+// final las completadas y canceladas (de la más reciente a la más antigua)
+const [citas, clientes] = puedeVer
+  ? await Promise.all([
+      pool
+        .query<Cita>(
+          `select c.id, c.cliente_id, u.name as cliente, u.telefono, c.mascota, c.especie,
+                  to_char(c.fecha, 'YYYY-MM-DD') as fecha, to_char(c.hora, 'HH24:MI') as hora,
+                  c.servicio, c.motivo, c.estado
+           from citas c
+           join "user" u on u.id = c.cliente_id
+           order by c.estado in ('completada', 'cancelada'),
+                    case when c.estado in ('completada', 'cancelada') then -extract(epoch from c.fecha + c.hora)
+                         else extract(epoch from c.fecha + c.hora) end`,
+        )
+        .then(({ rows }) => rows),
+      puedeCrear || puedeEditar
+        ? pool
+            .query<{ id: string; nombre: string; correo: string }>(
+              `select id, name as nombre, email as correo from "user" where role = 'cliente' order by name`,
+            )
+            .then(({ rows }) => rows)
+        : [],
+    ])
+  : [[], []];
+
+const claseEstado = (estado: Estado) =>
+  estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
+---
+
+<Sistema titulo="Citas">
+  {
+    puedeVer && citas.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar cita</span>
+        <Icono nombre="buscar" />
+        <input id="buscar" type="search" placeholder="Buscar por mascota, cliente o servicio" autocomplete="off" />
+      </label>
+    )
+  }
+  {
+    puedeCrear && clientes.length > 0 && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+        <Icono nombre="mas" />
+        Agendar cita
+      </button>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a las citas.</p>
+    ) : citas.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay citas.
+        {clientes.length === 0 ? (
+          <>
+            {" "}
+            Primero registra un cliente en <a href="/dashboard/clientes">Clientes</a>.
+          </>
+        ) : (
+          puedeCrear && " Agenda la primera con Agendar cita."
+        )}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Citas">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Fecha y hora</th>
+                <th>Mascota</th>
+                <th>Cliente</th>
+                <th>Teléfono</th>
+                <th>Servicio</th>
+                <th>Motivo</th>
+                <th>Estado</th>
+                {puedeEditar && <th class="fija-fin">Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {citas.map((c) => (
+                <tr
+                  class:list={[{ cancelada: c.estado === "cancelada" }]}
+                  data-datos={JSON.stringify(c)}
+                  data-buscar={normalizar(
+                    [c.mascota, c.cliente, servicios[c.servicio], estados[c.estado], c.motivo, c.fecha].join(" "),
+                  )}
+                >
+                  <td class="fija-inicio fecha">
+                    <span>{fecha.format(new Date(`${c.fecha}T00:00:00Z`))}</span>
+                    <span class="hora">{c.hora}</span>
+                  </td>
+                  <td>
+                    <span class="nombre">{c.mascota}</span>
+                    <span class="secundario"> · {especies[c.especie]}</span>
+                  </td>
+                  <td>{c.cliente}</td>
+                  <td>
+                    {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
+                  </td>
+                  <td>{servicios[c.servicio]}</td>
+                  <td class="secundario motivo">{c.motivo ?? "—"}</td>
+                  <td>
+                    <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
+                  </td>
+                  {puedeEditar && (
+                    <td class="fija-fin">
+                      <button
+                        type="button"
+                        class="boton-icono"
+                        data-editar
+                        aria-label={`Editar cita de ${c.mascota}`}
+                        title="Editar"
+                      >
+                        <Icono nombre="editar" />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {(puedeCrear || puedeEditar) && <FormCita clientes={clientes} />}
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarBuscador, activarHorarios, enviarConAccion, llenarFormulario } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+
+  const dialogo = document.querySelector<HTMLDialogElement>("#cita");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+  const actualizarHorarios = activarHorarios(form);
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar) return;
+    llenarFormulario(form, datos);
+    titulo.textContent = datos ? `Editar cita de ${datos.mascota}` : "Agendar cita";
+    guardar.textContent = datos ? "Guardar cambios" : "Agendar cita";
+    dialogo.showModal();
+    actualizarHorarios();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+  enviarConAccion(dialogo, (datos) => actions.citas.guardar(datos));
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("[data-editar]");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (fila?.dataset.datos) abrir(JSON.parse(fila.dataset.datos));
+  });
+</script>
+
+<style>
+  .fecha {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hora {
+    margin-left: 8px;
+    font-family: var(--font-bold);
+  }
+
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .motivo {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  td a,
+  .vacio a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent-texto);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .etiqueta.inactiva {
+    background-color: var(--color-surface);
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
+  }
+
+  tr.cancelada td:not(.fija-fin) {
+    color: color-mix(in oklch, var(--color-primary) 55%, white);
+  }
+</style>

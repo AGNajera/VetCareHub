@@ -48,6 +48,27 @@ Table inventario {
   Note: 'Si se borra el proveedor, el producto se queda con proveedor_id en null'
 }
 
+Table citas {
+  id uuid [pk, default: `gen_random_uuid()`]
+  cliente_id text [not null, ref: > user.id]
+  mascota text [not null]
+  especie text [not null, note: 'perro, gato, ave, roedor, reptil u otro']
+  fecha date [not null]
+  hora time [not null, note: 'Cada 30 minutos de 09:00 a 15:30 (hasta las 16:00)']
+  servicio text [not null, note: 'consulta, vacunacion, desparasitacion, cirugia, laboratorio o estetica']
+  motivo text
+  estado text [not null, default: 'pendiente', note: 'pendiente, confirmada, completada o cancelada']
+  creado_en timestamptz [not null, default: `now()`]
+  actualizado_en timestamptz [not null, default: `now()`]
+
+  indexes {
+    (fecha, hora) [unique, name: 'citas_horario_unico', note: "where estado <> 'cancelada'"]
+    cliente_id [name: 'citas_cliente_idx']
+  }
+
+  Note: 'Si se borra la cuenta del cliente, se borran sus citas'
+}
+
 Table migraciones {
   nombre text [pk, note: 'Archivo de db/migraciones']
   aplicada_en timestamptz [not null, default: `now()`]
@@ -63,8 +84,9 @@ Table user {
   email text [not null, unique]
   emailVerified boolean [not null]
   image text
-  role text [note: 'gerencia, jefatura o personal (src/lib/permisos.ts)']
+  role text [note: 'gerencia, jefatura, personal o cliente (src/lib/permisos.ts)']
   puesto text [note: 'Puesto del organigrama (src/data/equipo.ts)']
+  telefono text [note: 'Solo los clientes']
   banned boolean
   banReason text
   banExpires timestamptz
@@ -131,6 +153,7 @@ Table rateLimit {
 TableGroup sistema {
   proveedores
   inventario
+  citas
   migraciones
 }
 

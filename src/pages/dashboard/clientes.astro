@@ -1,0 +1,384 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { fecha, normalizar, numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const permisos = acciones(user.role, "clientes");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+const puedeEditar = permisos.includes("editar");
+
+type Cliente = {
+  id: string;
+  nombre: string;
+  correo: string;
+  telefono: string | null;
+  alta: Date;
+  citas: number;
+  proxima: string | null;
+};
+
+// Los clientes son las cuentas con el rol cliente. La próxima cita es la primera que
+// sigue activa y no ha pasado (en la hora de la clínica)
+const clientes = puedeVer
+  ? (
+      await pool.query<Cliente>(
+        `select u.id, u.name as nombre, u.email as correo, u.telefono, u."createdAt" as alta,
+                (select count(*)::int from citas c where c.cliente_id = u.id) as citas,
+                (select to_char(c.fecha, 'YYYY-MM-DD') || ' ' || to_char(c.hora, 'HH24:MI')
+                 from citas c
+                 where c.cliente_id = u.id and c.estado in ('pendiente', 'confirmada')
+                   and c.fecha + c.hora > (now() at time zone 'America/Mexico_City')
+                 order by c.fecha, c.hora limit 1) as proxima
+         from "user" u
+         where u.role = 'cliente'
+         order by u.name`,
+      )
+    ).rows
+  : [];
+
+const fechaCita = (texto: string) => {
+  const [dia, hora] = texto.split(" ");
+  return `${fecha.format(new Date(`${dia}T00:00:00Z`))}, ${hora}`;
+};
+---
+
+<Sistema titulo="Clientes">
+  {
+    puedeVer && clientes.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar cliente</span>
+        <Icono nombre="buscar" />
+        <input id="buscar" type="search" placeholder="Buscar por nombre, correo o teléfono" autocomplete="off" />
+      </label>
+    )
+  }
+  {
+    puedeCrear && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+        <Icono nombre="mas" />
+        Nuevo cliente
+      </button>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a los clientes.</p>
+    ) : clientes.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay clientes.
+        {puedeCrear && " Registra el primero con Nuevo cliente."}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Clientes">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Cliente</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th class="numero">Citas</th>
+                <th>Próxima cita</th>
+                <th>Alta</th>
+                {puedeEditar && <th class="fija-fin">Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {clientes.map((c) => (
+                <tr
+                  data-datos={JSON.stringify({ id: c.id, nombre: c.nombre, correo: c.correo, telefono: c.telefono })}
+                  data-buscar={normalizar([c.nombre, c.correo, c.telefono].join(" "))}
+                >
+                  <td class="fija-inicio nombre">{c.nombre}</td>
+                  <td>
+                    <a href={`mailto:${c.correo}`}>{c.correo}</a>
+                  </td>
+                  <td>
+                    {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
+                  </td>
+                  <td class="numero">{numero.format(c.citas)}</td>
+                  <td>{c.proxima ? fechaCita(c.proxima) : <span class="secundario">Sin citas</span>}</td>
+                  <td class="secundario">{fecha.format(c.alta)}</td>
+                  {puedeEditar && (
+                    <td class="fija-fin">
+                      <div class="acciones">
+                        <button
+                          type="button"
+                          class="boton-icono"
+                          data-editar
+                          aria-label={`Editar ${c.nombre}`}
+                          title="Editar"
+                        >
+                          <Icono nombre="editar" />
+                        </button>
+                        <button
+                          type="button"
+                          class="boton-icono"
+                          data-password
+                          aria-label={`Darle otra contraseña a ${c.nombre}`}
+                          title="Nueva contraseña"
+                        >
+                          <Icono nombre="llave" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {
+    (puedeCrear || puedeEditar) && (
+      <dialog id="cliente" class="dialogo" aria-labelledby="titulo-cliente">
+        <form novalidate>
+          <h2 id="titulo-cliente">Nuevo cliente</h2>
+          <input type="hidden" name="id" />
+          <div class="campos">
+            <div class="campo ancho">
+              <label for="c-nombre">Nombre completo</label>
+              <input id="c-nombre" name="nombre" autocomplete="off" required />
+            </div>
+            <div class="campo">
+              <label for="c-correo">Correo</label>
+              <input id="c-correo" name="correo" type="email" autocomplete="off" required />
+            </div>
+            <div class="campo">
+              <label for="c-telefono">Teléfono</label>
+              <input id="c-telefono" name="telefono" type="tel" autocomplete="off" />
+            </div>
+            <p class="ayuda ancho" data-ayuda-nuevo>
+              Con el correo y una contraseña que se genera al guardar, el cliente entra en
+              Acceder al sistema a su propio panel para agendar y revisar sus citas.
+            </p>
+          </div>
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">
+              Registrar cliente
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    puedeEditar && (
+      <dialog id="confirmar-password" class="dialogo dialogo-angosto" aria-labelledby="titulo-confirmar">
+        <form novalidate>
+          <h2 id="titulo-confirmar">Nueva contraseña</h2>
+          <input type="hidden" name="id" />
+          <p class="dialogo-texto" />
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">
+              Generar contraseña
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    (puedeCrear || puedeEditar) && (
+      <dialog id="password" class="dialogo dialogo-angosto" aria-labelledby="titulo-password">
+        <form method="dialog">
+          <h2 id="titulo-password">Cuenta lista</h2>
+          <div class="dialogo-texto">
+            <p>
+              Pásale estos datos a <strong data-nombre></strong>. La contraseña solo se muestra
+              esta vez; después puede cambiarla en Mi cuenta.
+            </p>
+            <dl class="credenciales">
+              <dt>Correo</dt>
+              <dd data-correo></dd>
+              <dt>Contraseña</dt>
+              <dd><code data-clave></code></dd>
+            </dl>
+          </div>
+          <div class="dialogo-botones">
+            <button type="button" class="boton" data-copiar>Copiar</button>
+            <button type="submit" class="boton principal">Listo</button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarBuscador, enviarConAccion, mostrarError } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+
+  // La contraseña se muestra una sola vez; al cerrar se recarga para ver la tabla al día
+  const ventanaPassword = document.querySelector<HTMLDialogElement>("#password");
+  const mostrarPassword = (nombre: string, correo: string, clave: string) => {
+    if (!ventanaPassword) return;
+    ventanaPassword.querySelector("[data-nombre]")!.textContent = nombre;
+    ventanaPassword.querySelector("[data-correo]")!.textContent = correo;
+    ventanaPassword.querySelector("[data-clave]")!.textContent = clave;
+    ventanaPassword.showModal();
+  };
+  ventanaPassword?.addEventListener("close", () => location.reload());
+  ventanaPassword?.querySelector("[data-copiar]")?.addEventListener("click", async (event) => {
+    const boton = event.currentTarget as HTMLButtonElement;
+    const correo = ventanaPassword.querySelector("[data-correo]")!.textContent;
+    const clave = ventanaPassword.querySelector("[data-clave]")!.textContent;
+    try {
+      await navigator.clipboard.writeText(`Correo: ${correo}\nContraseña: ${clave}`);
+      boton.textContent = "Copiado";
+    } catch {
+      mostrarError("No se pudo copiar. Selecciona la contraseña y cópiala a mano.");
+    }
+  });
+
+  // La misma ventana sirve para Nuevo y Editar: al editar se llena con los datos de la fila
+  const dialogo = document.querySelector<HTMLDialogElement>("#cliente");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+  const ayudaNuevo = dialogo?.querySelector<HTMLElement>("[data-ayuda-nuevo]");
+
+  const abrir = (datos?: Record<string, string | null>) => {
+    if (!dialogo || !form || !titulo || !guardar || !ayudaNuevo) return;
+    form.reset();
+    for (const campo of form.querySelectorAll("input")) {
+      campo.value = datos?.[campo.name] ?? "";
+    }
+    titulo.textContent = datos ? `Editar ${datos.nombre}` : "Nuevo cliente";
+    guardar.textContent = datos ? "Guardar cambios" : "Registrar cliente";
+    ayudaNuevo.hidden = Boolean(datos);
+    dialogo.showModal();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+  // Al crear la cuenta se muestran el nombre y el correo que se enviaron junto con la
+  // contraseña que devuelve la acción; al editar solo se recarga
+  let enviado = { nombre: "", correo: "" };
+  enviarConAccion(
+    dialogo,
+    (datos) => {
+      enviado = {
+        nombre: String(datos.get("nombre")).trim(),
+        correo: String(datos.get("correo")).trim().toLowerCase(),
+      };
+      return actions.clientes.guardar(datos);
+    },
+    ({ password }) => {
+      if (password) mostrarPassword(enviado.nombre, enviado.correo, password);
+      else location.reload();
+    },
+  );
+
+  // Nueva contraseña: pide confirmación porque la anterior deja de servir
+  const confirmar = document.querySelector<HTMLDialogElement>("#confirmar-password");
+  let elegido = { nombre: "", correo: "" };
+  enviarConAccion(
+    confirmar,
+    (datos) => actions.clientes.nuevaPassword({ id: String(datos.get("id")) }),
+    ({ password }) => mostrarPassword(elegido.nombre, elegido.correo, password),
+  );
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("button");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (!boton || !fila?.dataset.datos) return;
+    const datos = JSON.parse(fila.dataset.datos);
+
+    if (boton.hasAttribute("data-editar")) abrir(datos);
+
+    if (boton.hasAttribute("data-password") && confirmar) {
+      elegido = { nombre: datos.nombre, correo: datos.correo };
+      confirmar.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      confirmar.querySelector(".dialogo-texto")!.textContent =
+        `Se le dará a ${datos.nombre} una contraseña nueva y se cerrará su sesión. La que tiene ahora dejará de servir.`;
+      confirmar.showModal();
+    }
+  });
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  td a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent-texto);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .acciones {
+    display: flex;
+    gap: 6px;
+  }
+
+  .ayuda {
+    margin: 0;
+    line-height: 1.5;
+
+    &.ancho {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .dialogo-texto p {
+    margin: 0 0 16px;
+  }
+
+  .credenciales {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    margin: 0;
+    padding: 14px 16px;
+    border: var(--border);
+    border-radius: 10px;
+    background-color: var(--color-white);
+
+    dt {
+      font-family: var(--font-bold);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    code {
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+    }
+  }
+</style>

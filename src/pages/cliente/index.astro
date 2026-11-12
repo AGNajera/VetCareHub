@@ -1,0 +1,205 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
+import { pool } from "../../lib/db";
+import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
+import { fecha, numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+
+type Cita = {
+  id: string;
+  mascota: string;
+  especie: Especie;
+  fecha: string;
+  hora: string;
+  servicio: Servicio;
+  estado: Estado;
+};
+
+const { rows: proximas } = await pool.query<Cita>(
+  `select id, mascota, especie, to_char(fecha, 'YYYY-MM-DD') as fecha,
+          to_char(hora, 'HH24:MI') as hora, servicio, estado
+   from citas
+   where cliente_id = $1
+     and estado in ('pendiente', 'confirmada')
+     and fecha + hora > (now() at time zone 'America/Mexico_City')
+   order by fecha, hora`,
+  [user.id],
+);
+
+const primera = proximas[0];
+
+const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href: string }[] = [
+  {
+    titulo: "Citas próximas",
+    valor: numero.format(proximas.length),
+    nota: primera
+      ? `${primera.mascota} · ${fecha.format(new Date(`${primera.fecha}T00:00:00Z`))}, ${primera.hora}`
+      : "Ninguna agendada",
+    icono: "citas",
+    href: "/cliente/citas",
+  },
+  {
+    titulo: "Mi cuenta",
+    valor: user.name.split(" ")[0],
+    nota: user.email,
+    icono: "cuenta",
+    href: "/cliente/cuenta",
+  },
+];
+---
+
+<Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
+  <ul class="tarjetas">
+    {
+      tarjetas.map(({ titulo, valor, nota, icono, href }) => (
+        <li>
+          <a class="tarjeta enlace" href={href}>
+            <span class="tarjeta-icono">
+              <Icono nombre={icono} />
+            </span>
+            <h2>{titulo}</h2>
+            <p class="valor">{valor}</p>
+            <p class="nota">{nota}</p>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <section class="bloque" aria-labelledby="titulo-citas">
+    <div class="bloque-encabezado">
+      <h2 id="titulo-citas">Próximas citas</h2>
+      <a href="/cliente/citas">{proximas.length > 0 ? "Agendar o cambiar" : "Agendar cita"}</a>
+    </div>
+    {
+      proximas.length === 0 ? (
+        <p class="vacio">
+          No tienes citas próximas. Agenda una en <a href="/cliente/citas">Mis citas</a>.
+        </p>
+      ) : (
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Próximas citas">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Mascota</th>
+                <th>Servicio</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {proximas.map((c) => (
+                <tr>
+                  <td>
+                    {fecha.format(new Date(`${c.fecha}T00:00:00Z`))},{" "}
+                    <strong class="hora">{c.hora}</strong>
+                  </td>
+                  <td>
+                    <span class="nombre">{c.mascota}</span>
+                    <span class="secundario"> · {especies[c.especie]}</span>
+                  </td>
+                  <td>{servicios[c.servicio]}</td>
+                  <td>
+                    <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>
+                      {estados[c.estado]}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+  </section>
+</Sistema>
+
+<style>
+  .tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tarjeta {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    height: 100%;
+    padding: 20px 22px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+    text-decoration: none;
+
+    h2 {
+      grid-row: 1;
+      margin: 0;
+      font-family: var(--font-bold);
+      font-size: 1.1rem;
+    }
+
+    p {
+      grid-column: 1 / -1;
+      margin: 0;
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 4px;
+    }
+  }
+
+  .tarjeta-icono {
+    display: grid;
+    grid-row: 1;
+    grid-column: 2;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: var(--color-mint);
+    color: var(--color-accent);
+  }
+
+  .valor {
+    margin-top: 4px;
+    font-family: var(--font-bold);
+    font-size: 2.4rem;
+    line-height: 1.1;
+  }
+
+  .nota {
+    overflow: hidden;
+    color: var(--color-accent-texto);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nombre,
+  .hora {
+    font-family: var(--font-bold);
+  }
+
+  .vacio a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent-texto);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+</style>
