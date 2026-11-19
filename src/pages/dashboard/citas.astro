@@ -4,8 +4,16 @@ import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
 import { acciones } from "../../lib/permisos";
-import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
-import { fecha, normalizar } from "../../lib/formato";
+import {
+  especies,
+  estados,
+  preciosServicio,
+  servicios,
+  type Especie,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, normalizar, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -104,6 +112,7 @@ const claseEstado = (estado: Estado) =>
                 <th>Cliente</th>
                 <th>Teléfono</th>
                 <th>Servicio</th>
+                <th class="numero">Precio</th>
                 <th>Motivo</th>
                 <th>Estado</th>
                 <th class="fija-fin">Acciones</th>
@@ -115,7 +124,15 @@ const claseEstado = (estado: Estado) =>
                   class:list={[{ cancelada: c.estado === "cancelada" }]}
                   data-datos={JSON.stringify(c)}
                   data-buscar={normalizar(
-                    [c.mascota, c.cliente, servicios[c.servicio], estados[c.estado], c.motivo, c.fecha].join(" "),
+                    [
+                      c.mascota,
+                      c.cliente,
+                      servicios[c.servicio],
+                      pesos.format(preciosServicio[c.servicio]),
+                      estados[c.estado],
+                      c.motivo,
+                      c.fecha,
+                    ].join(" "),
                   )}
                 >
                   <td class="fija-inicio fecha">
@@ -131,6 +148,7 @@ const claseEstado = (estado: Estado) =>
                     {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
                   </td>
                   <td>{servicios[c.servicio]}</td>
+                  <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                   <td class="secundario motivo">{c.motivo ?? "—"}</td>
                   <td>
                     <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>

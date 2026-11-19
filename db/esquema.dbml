@@ -55,7 +55,7 @@ Table citas {
   especie text [not null, note: 'perro, gato, ave, roedor, reptil u otro']
   fecha date [not null]
   hora time [not null, note: 'Cada 30 minutos de 09:00 a 15:30 (hasta las 16:00)']
-  servicio text [not null, note: 'consulta, vacunacion, desparasitacion, cirugia, laboratorio o estetica']
+  servicio text [not null, note: 'Uno de los 20 servicios de catalogoServicios (src/lib/citas.ts)']
   motivo text
   estado text [not null, default: 'pendiente', note: 'pendiente, confirmada, completada o cancelada']
   creado_en timestamptz [not null, default: `now()`]

@@ -3,8 +3,16 @@ import Sistema from "../../layouts/Sistema.astro";
 import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
-import { fecha, numero } from "../../lib/formato";
+import {
+  especies,
+  estados,
+  preciosServicio,
+  servicios,
+  type Especie,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, numero, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -94,6 +102,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                 <th>Fecha y hora</th>
                 <th>Mascota</th>
                 <th>Servicio</th>
+                <th class="numero">Precio</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -109,6 +118,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                     <span class="secundario"> · {especies[c.especie]}</span>
                   </td>
                   <td>{servicios[c.servicio]}</td>
+                  <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                   <td>
                     <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>
                       {estados[c.estado]}

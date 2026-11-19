@@ -3,7 +3,8 @@
 // cliente, cualquier día y el estado, para corregir errores) y /cliente/citas (el cliente
 // agenda para sí mismo en un día que no haya pasado). Al elegir el día, la página desactiva
 // los horarios ocupados con activarHorarios (src/scripts/sistema.ts)
-import { ahoraEnClinica, especies, estados, horarios, servicios } from "../../lib/citas";
+import { ahoraEnClinica, catalogoServicios, especies, estados, horarios } from "../../lib/citas";
+import { pesos } from "../../lib/formato";
 
 type Props = {
   // Si se pasa, el personal elige de qué cliente es la cita y su estado
@@ -49,7 +50,13 @@ const hoy = ahoraEnClinica().fecha;
         <label for="ci-servicio">Servicio</label>
         <select id="ci-servicio" name="servicio" required>
           <option value="">Elige uno</option>
-          {Object.entries(servicios).map(([valor, texto]) => <option value={valor}>{texto}</option>)}
+          {
+            Object.entries(catalogoServicios).map(([valor, { nombre, precio }]) => (
+              <option value={valor}>
+                {nombre} · {pesos.format(precio)}
+              </option>
+            ))
+          }
         </select>
       </div>
       <div class="campo">
