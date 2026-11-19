@@ -106,7 +106,7 @@ const claseEstado = (estado: Estado) =>
                 <th>Servicio</th>
                 <th>Motivo</th>
                 <th>Estado</th>
-                {puedeEditar && <th class="fija-fin">Acciones</th>}
+                <th class="fija-fin">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -135,19 +135,30 @@ const claseEstado = (estado: Estado) =>
                   <td>
                     <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
                   </td>
-                  {puedeEditar && (
-                    <td class="fija-fin">
-                      <button
-                        type="button"
+                  <td class="fija-fin">
+                    <div class="acciones">
+                      <a
                         class="boton-icono"
-                        data-editar
-                        aria-label={`Editar cita de ${c.mascota}`}
-                        title="Editar"
+                        href={`/api/citas/${c.id}.pdf`}
+                        download
+                        aria-label={`Descargar cita de ${c.mascota} en PDF`}
+                        title="Descargar PDF"
                       >
-                        <Icono nombre="editar" />
-                      </button>
-                    </td>
-                  )}
+                        <Icono nombre="descargar" />
+                      </a>
+                      {puedeEditar && (
+                        <button
+                          type="button"
+                          class="boton-icono"
+                          data-editar
+                          aria-label={`Editar cita de ${c.mascota}`}
+                          title="Editar"
+                        >
+                          <Icono nombre="editar" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -213,7 +224,12 @@ const claseEstado = (estado: Estado) =>
     text-overflow: ellipsis;
   }
 
-  td a,
+  .acciones {
+    display: flex;
+    gap: 6px;
+  }
+
+  td a:not(.boton-icono),
   .vacio a {
     color: inherit;
     text-underline-offset: 3px;

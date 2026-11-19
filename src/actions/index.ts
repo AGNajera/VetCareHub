@@ -181,7 +181,7 @@ export const server = {
           }
         } catch (error) {
           // 23505: ya hay otro proveedor con ese nombre (la columna es unique)
-          if ((error as { code?: string }).code === "23505") {
+          if (esRepetido(error)) {
             throw new ActionError({
               code: "CONFLICT",
               message: `Ya hay un proveedor que se llama ${p.nombre}.`,
@@ -263,9 +263,54 @@ export const server = {
 
         const password = passwordAlAzar();
         const ctx = await auth.$context;
-        await ctx.internalAdapter.updatePassword(id, await ctx.password.hash(password));
-        await ctx.internalAdapter.deleteSessions(id);
+        const hash = await ctx.password.hash(password);
+        const { rowCount: actualizadas } = await pool.query(
+          `update account set password = $2, "updatedAt" = now()
+           where "userId" = $1 and "providerId" = 'credential'`,
+          [id, hash],
+        );
+        if (!actualizadas) {
+          throw new ActionError({
+            code: "NOT_FOUND",
+            message: "No se encontró el acceso con contraseña de ese cliente.",
+          });
+        }
+        await pool.query(`delete from session where "userId" = $1`, [id]);
         return { password };
+      },
+    }),
+
+    // Da de baja la cuenta del cliente y sus citas (on delete cascade)
+    borrar: defineAction({
+      input: z.object({ id: z.string().min(1) }),
+      handler: async ({ id }, context) => {
+        exigir(context, "clientes", "eliminar");
+        const { rowCount } = await pool.query(
+          `delete from "user" where id = $1 and role = 'cliente'`,
+          [id],
+        );
+        if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
+      },
+    }),
+
+    // Guarda que el cliente aceptó los términos y condiciones al entrar por primera vez
+    aceptarTerminos: defineAction({
+      accept: "form",
+      input: z.object({
+        acepto: z.literal("on", "Debes aceptar los términos y condiciones para continuar."),
+      }),
+      handler: async (_, context) => {
+        const { user } = context.locals;
+        if (!user || !esCliente(user.role)) throw new ActionError({ code: "UNAUTHORIZED" });
+        await pool.query(
+          `update "user"
+           set terminos_aceptados_en = coalesce(terminos_aceptados_en, now()), "updatedAt" = now()
+           where id = $1 and role = 'cliente'`,
+          [user.id],
+        );
+        // Borra el caché de la sesión para que la siguiente página ya traiga la fecha
+        context.cookies.delete("better-auth.session_data", { path: "/" });
+        context.cookies.delete("__Secure-better-auth.session_data", { path: "/" });
       },
     }),
   },

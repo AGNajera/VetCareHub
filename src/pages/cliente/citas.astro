@@ -35,7 +35,6 @@ const { rows: citas } = await pool.query<Cita>(
   [user.id],
 );
 
-const conEditables = citas.some((c) => c.editable);
 const claseEstado = (estado: Estado) =>
   estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
 ---
@@ -59,7 +58,7 @@ const claseEstado = (estado: Estado) =>
               <th>Servicio</th>
               <th>Motivo</th>
               <th>Estado</th>
-              {conEditables && <th class="fija-fin">Acciones</th>}
+              <th class="fija-fin">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -84,10 +83,19 @@ const claseEstado = (estado: Estado) =>
                 <td>
                   <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
                 </td>
-                {conEditables && (
-                  <td class="fija-fin">
+                <td class="fija-fin">
+                  <div class="acciones">
+                    <a
+                      class="boton-icono"
+                      href={`/api/citas/${c.id}.pdf`}
+                      download
+                      aria-label={`Descargar cita de ${c.mascota} en PDF`}
+                      title="Descargar PDF"
+                    >
+                      <Icono nombre="descargar" />
+                    </a>
                     {c.editable && (
-                      <div class="acciones">
+                      <>
                         <button
                           type="button"
                           class="boton-icono"
@@ -106,10 +114,10 @@ const claseEstado = (estado: Estado) =>
                         >
                           <Icono nombre="cancelar" />
                         </button>
-                      </div>
+                      </>
                     )}
-                  </td>
-                )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

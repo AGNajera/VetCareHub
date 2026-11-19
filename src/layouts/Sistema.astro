@@ -5,7 +5,9 @@
 // El middleware ya mandó al login a quien no tiene sesión, así que aquí siempre hay user
 import Layout from "./Layout.astro";
 import Icono, { type NombreIcono } from "../components/sistema/Icono.astro";
+import TerminosCliente from "../components/sistema/TerminosCliente.astro";
 import Logo from "../assets/logo.svg";
+import { pool } from "../lib/db";
 import { esCliente, inicioDe, nombreRol, type Rol } from "../lib/permisos";
 import { fotoDeCorreo } from "../data/fotos";
 
@@ -15,6 +17,18 @@ const user = Astro.locals.user!;
 const cliente = esCliente(user.role);
 const inicio = inicioDe(user.role);
 const cuenta = `${inicio}/cuenta`;
+
+// Si la cookie de sesión todavía no trae la fecha (dura 5 minutos), se confirma en la base
+// para no volver a pedir los términos después de que el cliente los acepta
+const pedirTerminos =
+  cliente &&
+  !user.terminos_aceptados_en &&
+  !(
+    await pool.query<{ aceptados: boolean }>(
+      `select terminos_aceptados_en is not null as aceptados from "user" where id = $1`,
+      [user.id],
+    )
+  ).rows[0]?.aceptados;
 
 const secciones: { href: string; texto: string; icono: NombreIcono }[] = cliente
   ? [
@@ -129,6 +143,7 @@ const iniciales = user.name
         <slot name="acciones" />
       </div>
       <slot />
+      {pedirTerminos && <TerminosCliente />}
     </main>
 
     <!-- Errores de las acciones de la tabla (+, −, deshabilitar, borrar) -->
@@ -169,8 +184,12 @@ const iniciales = user.name
 
   salir?.addEventListener("click", async () => {
     salir.disabled = true;
-    await authClient.signOut();
-    location.assign("/");
+    try {
+      await authClient.signOut();
+      location.assign("/");
+    } catch {
+      salir.disabled = false;
+    }
   });
 
   // Sidebar en celular
@@ -586,6 +605,7 @@ const iniciales = user.name
       border-radius: 8px;
       background: none;
       color: var(--color-primary);
+      text-decoration: none;
       cursor: pointer;
 
       &:hover:not(:disabled) {

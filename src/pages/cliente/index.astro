@@ -1,5 +1,6 @@
 ---
 import Sistema from "../../layouts/Sistema.astro";
+import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
 import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
@@ -53,6 +54,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 ---
 
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
+  <BienvenidaMascota
+    titulo="¡Qué gusto verte por aquí!"
+    texto="Desde tu panel puedes consultar tus próximas citas, agendar una nueva visita para tu mascota o descargar su comprobante."
+  />
+
   <ul class="tarjetas">
     {
       tarjetas.map(({ titulo, valor, nota, icono, href }) => (

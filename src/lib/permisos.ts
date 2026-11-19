@@ -21,19 +21,19 @@ export const roles = {
     ...adminAc.statements,
     inventario: ["ver", "crear", "editar", "eliminar"],
     proveedores: ["ver", "crear", "editar", "eliminar"],
-    clientes: ["ver", "crear", "editar"],
+    clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
   }),
   jefatura: ac.newRole({
     inventario: ["ver", "crear", "editar"],
     proveedores: ["ver", "crear", "editar"],
-    clientes: ["ver", "crear", "editar"],
+    clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
   }),
   personal: ac.newRole({
     inventario: ["ver"],
     proveedores: ["ver"],
-    clientes: ["ver", "crear", "editar"],
+    clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
   }),
   // Los clientes no entran a /dashboard: tienen su panel en /cliente, donde solo ven y
