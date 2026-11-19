@@ -3,8 +3,16 @@ import Sistema from "../../layouts/Sistema.astro";
 import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
-import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
-import { fecha } from "../../lib/formato";
+import {
+  especies,
+  estados,
+  preciosServicio,
+  servicios,
+  type Especie,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -56,6 +64,7 @@ const claseEstado = (estado: Estado) =>
               <th class="fija-inicio">Fecha y hora</th>
               <th>Mascota</th>
               <th>Servicio</th>
+              <th class="numero">Precio</th>
               <th>Motivo</th>
               <th>Estado</th>
               <th class="fija-fin">Acciones</th>
@@ -79,6 +88,7 @@ const claseEstado = (estado: Estado) =>
                   <span class="secundario"> · {especies[c.especie]}</span>
                 </td>
                 <td>{servicios[c.servicio]}</td>
+                <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                 <td class="secundario motivo">{c.motivo ?? "—"}</td>
                 <td>
                   <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>

@@ -1,11 +1,13 @@
 import {
   especies,
   estados,
+  preciosServicio,
   servicios,
   type Especie,
   type Estado,
   type Servicio,
 } from "./citas";
+import { pesos } from "./formato";
 
 export type DatosCitaPdf = {
   id: string;
@@ -280,7 +282,9 @@ export const generarPdfCita = (cita: DatosCitaPdf): Uint8Array => {
     texto("F1", 13, MARGEN + 270, 348, especieTexto),
 
     texto("F2", 10, MARGEN + 20, 378, "SERVICIO"),
+    texto("F2", 10, MARGEN + 380, 378, "PRECIO"),
     texto("F2", 13, MARGEN + 20, 396, servicioTexto),
+    texto("F2", 13, MARGEN + 380, 396, `${pesos.format(preciosServicio[cita.servicio])} MXN`),
 
     texto("F2", 10, MARGEN + 20, 422, "MOTIVO O NOTAS"),
     ...motivoLineas.map((linea, i) => texto("F1", 11.5, MARGEN + 20, 438 + i * 14, linea)),

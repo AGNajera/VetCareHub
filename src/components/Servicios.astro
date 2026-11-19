@@ -1,66 +1,166 @@
 ---
-import Stethoscope from "../assets/stethoscope.svg";
-import Vaccine from "../assets/vaccine.svg";
-import Scissors from "../assets/scissors.svg";
-import Microscope from "../assets/microscope.svg";
-import HeartRate from "../assets/heart-rate-monitor.svg";
-import Bath from "../assets/bath.svg";
+import { catalogoServicios, type Servicio } from "../lib/citas";
+import { pesos } from "../lib/formato";
 
-const servicios = [
-  {
-    Icono: Stethoscope,
-    titulo: "Consulta general",
-    texto:
-      "Revisión completa de nariz a cola, con diagnóstico y plan de cuidados por escrito.",
-  },
-  {
-    Icono: Vaccine,
-    titulo: "Vacunación y desparasitación",
-    texto:
-      "Esquemas para cachorros y adultos. Anotamos cada dosis en su cartilla y te avisamos cuando toca la siguiente.",
-  },
-  {
-    Icono: Scissors,
-    titulo: "Cirugía y esterilización",
-    texto:
-      "Quirófano propio, anestesia inhalada y monitoreo de signos vitales durante todo el procedimiento.",
-  },
-  {
-    Icono: Microscope,
-    titulo: "Laboratorio e imagen",
-    texto:
-      "Análisis de sangre, rayos X y ultrasonido aquí mismo. La mayoría de los resultados están el mismo día.",
-  },
-  {
-    Icono: HeartRate,
-    titulo: "Hospitalización",
-    texto:
-      "Áreas separadas para perros y gatos. Te mandamos fotos y un reporte diario por WhatsApp.",
-  },
-  {
-    Icono: Bath,
-    titulo: "Estética y baño",
-    texto:
-      "Baño medicado, corte de pelo y de uñas. En cada visita revisamos piel y oídos.",
-  },
-];
+// Íconos de Tabler (outline) para cada uno de los 20 servicios de la clínica
+const iconos: Record<Servicio, string[]> = {
+  consulta: [
+    "M6 4h-1a2 2 0 0 0 -2 2v3.5a5.5 5.5 0 0 0 11 0v-3.5a2 2 0 0 0 -2 -2h-1",
+    "M8 15a6 6 0 1 0 12 0v-3",
+    "M11 3v2",
+    "M6 3v2",
+    "M18 10a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+  ],
+  consulta_especialidad: [
+    "M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0",
+    "M6 21v-2a4 4 0 0 1 4 -4h.5",
+    "M18 22l3.35 -3.284a2.143 2.143 0 0 0 .005 -3.071a2.242 2.242 0 0 0 -3.129 -.006l-.224 .22l-.223 -.22a2.242 2.242 0 0 0 -3.128 -.006a2.143 2.143 0 0 0 -.006 3.071l3.355 3.296z",
+  ],
+  urgencias: [
+    "M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+    "M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+    "M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5",
+    "M6 10h4m-2 -2v4",
+  ],
+  vacunacion: [
+    "M17 3l4 4",
+    "M19 5l-4.5 4.5",
+    "M11.5 6.5l6 6",
+    "M16.5 11.5l-6.5 6.5h-4v-4l6.5 -6.5",
+    "M7.5 12.5l1.5 1.5",
+    "M10.5 9.5l1.5 1.5",
+    "M3 21l3 -3",
+  ],
+  desparasitacion: [
+    "M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3",
+    "M9 12l2 2l4 -4",
+  ],
+  esterilizacion: [
+    "M6 7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
+    "M6 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
+    "M8.6 8.6l10.4 10.4",
+    "M8.6 15.4l10.4 -10.4",
+  ],
+  cirugia: [
+    "M19 4a1 1 0 0 1 1 1a3 3 0 0 1 -3 3h-7l-6 6h4a2 2 0 0 0 1.414 -.586l5.586 -5.414",
+    "M3 19l11 -11",
+    "M3 19h5",
+  ],
+  limpieza_dental: [
+    "M12 5.5c-1.074 -.586 -2.583 -1.5 -4 -1.5c-2.1 0 -4 1.247 -4 5c0 4.899 1.056 8.41 2.671 10.537c.573 .756 1.97 .521 2.567 -.236c.398 -.505 .819 -1.439 1.262 -2.801c.292 -.771 .892 -1.5 1.5 -1.5s1.208 .729 1.5 1.5c.443 1.362 .864 2.296 1.262 2.801c.597 .757 1.994 .992 2.567 .236c1.615 -2.127 2.671 -5.638 2.671 -10.537c0 -3.753 -1.9 -5 -4 -5c-1.417 0 -2.926 .914 -4 1.5z",
+    "M12 5.5l.5 1.5",
+  ],
+  laboratorio: [
+    "M20 8.04l-12.122 12.124a2.857 2.857 0 1 1 -4.041 -4.04l12.122 -12.124",
+    "M7 13h8",
+    "M19 15l1.5 1.6a2 2 0 1 1 -3 0l1.5 -1.6z",
+    "M15 3l6 6",
+  ],
+  rayos_x: [
+    "M15 3a3 3 0 0 1 3 3a3 3 0 1 1 -2.12 5.122l-4.758 4.758a3 3 0 1 1 -5.117 2.297l-.005 -.177a3 3 0 1 1 5.122 -2.12l4.758 -4.758a3 3 0 0 1 -.88 -2.122a3 3 0 0 1 3 -3z",
+  ],
+  ultrasonido: [
+    "M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0",
+    "M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0",
+    "M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0",
+    "M12 3v9l6 6",
+  ],
+  electrocardiograma: [
+    "M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14z",
+    "M3 12h4l2 -4l3 8l2 -4h7",
+  ],
+  citologia: [
+    "M5 21h14",
+    "M6 18h2",
+    "M7 18v3",
+    "M9 11l3 3l6 -6l-3 -3z",
+    "M10.5 12.5l-1.5 1.5",
+    "M17 3l3 3",
+    "M12 21a6 6 0 0 0 3.715 -10.712",
+  ],
+  curaciones: [
+    "M14 12v.01",
+    "M10 12v.01",
+    "M12 10v.01",
+    "M12 14v.01",
+    "M4.5 12.5l8 -8a4.94 4.94 0 0 1 7 7l-8 8a4.94 4.94 0 0 1 -7 -7",
+  ],
+  fluidoterapia: [
+    "M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546z",
+    "M12 11v5",
+    "M9.5 13.5h5",
+  ],
+  hospitalizacion: [
+    "M7 9m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+    "M22 17v-3h-20",
+    "M2 8v9",
+    "M12 14h10v-2a3 3 0 0 0 -3 -3h-7v5z",
+  ],
+  estetica: [
+    "M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1 -4 4h-10a4 4 0 0 1 -4 -4v-3a1 1 0 0 1 1 -1",
+    "M6 12v-7a2 2 0 0 1 2 -2h3v2.25",
+    "M4 21l1 -1.5",
+    "M20 21l-1 -1.5",
+  ],
+  bano_medicado: [
+    "M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z",
+  ],
+  microchip: [
+    "M5 5m0 1a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1z",
+    "M9 9h6v6h-6z",
+    "M3 10h2",
+    "M3 14h2",
+    "M10 3v2",
+    "M14 3v2",
+    "M21 10h-2",
+    "M21 14h-2",
+    "M14 21v-2",
+    "M10 21v-2",
+  ],
+  certificado_viaje: [
+    "M14 3v4a1 1 0 0 0 1 1h4",
+    "M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z",
+    "M9 15l2 2l4 -4",
+  ],
+};
+
+const listaServicios = Object.entries(catalogoServicios).map(([clave, datos]) => ({
+  ...datos,
+  trazos: iconos[clave as Servicio],
+}));
 ---
 
 <section id="servicios" class="section">
-  <h2>Servicios</h2>
+  <h2>Servicios y precios</h2>
   <p class="section-intro">
-    Casi todo se resuelve en la clínica, sin mandarte a otro lado para un
-    estudio o una cirugía.
+    Contamos con 20 servicios médicos, quirúrgicos, de diagnóstico y estética
+    en un mismo lugar, con precios claros desde el inicio.
   </p>
 
   <ul class="servicios">
     {
-      servicios.map(({ Icono, titulo, texto }) => (
+      listaServicios.map(({ trazos, nombre, precio, texto }) => (
         <li>
-          <span class="icono">
-            <Icono aria-hidden="true" />
-          </span>
-          <h3>{titulo}</h3>
+          <div class="cabecera">
+            <span class="icono">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                {trazos.map((d) => (
+                  <path d={d} />
+                ))}
+              </svg>
+            </span>
+            <span class="precio">{pesos.format(precio)}</span>
+          </div>
+          <h3>{nombre}</h3>
           <p>{texto}</p>
         </li>
       ))
@@ -70,10 +170,11 @@ const servicios = [
 
 <style>
   /* El fondo marino asoma por el gap de 2px y hace de borde compartido entre celdas,
-     igual que los separadores del menú */
+     igual que los separadores del menú. Con 4, 2 o 1 columnas las 20 tarjetas siempre
+     llenan filas completas sin dejar cuadros vacíos al final */
   .servicios {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 2px;
     margin: 0;
     padding: 0;
@@ -84,34 +185,69 @@ const servicios = [
     background-color: var(--color-primary);
 
     li {
-      padding: 24px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 22px;
       background-color: var(--color-white);
     }
+  }
+
+  .cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .icono {
     display: grid;
     place-items: center;
-    width: 56px;
-    height: 56px;
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
     border: var(--border);
     border-radius: 50%;
     background-color: var(--color-mint);
 
     .icon {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
     }
+  }
+
+  .precio {
+    padding: 5px 11px;
+    border: var(--border);
+    border-radius: 999px;
+    background-color: var(--color-mint);
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    font-size: 0.98rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   h3 {
     margin: 16px 0 6px;
     font-family: var(--font-bold);
-    font-size: 1.3rem;
+    font-size: 1.2rem;
   }
 
   li p {
     margin: 0;
     line-height: 1.5;
+  }
+
+  @media (max-width: 960px) {
+    .servicios {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 540px) {
+    .servicios {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
