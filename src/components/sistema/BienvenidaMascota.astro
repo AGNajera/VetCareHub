@@ -1,0 +1,117 @@
+---
+// Tarjeta de bienvenida con Canela, la mascota de VetCareHub, para el inicio del panel
+import Mascota from "../../assets/mascota.svg";
+
+const { titulo, texto } = Astro.props as { titulo: string; texto: string };
+---
+
+<section class="bienvenida" aria-label="Bienvenida de Canela, la mascota de VetCareHub">
+  <div class="cuarto">
+    <Mascota
+      class="canela"
+      role="img"
+      aria-label="Canela, la mascota de la clínica VetCareHub"
+    />
+  </div>
+  <div class="mensaje">
+    <span class="etiqueta">Canela · Mascota de VetCareHub</span>
+    <h2>{titulo}</h2>
+    <p>{texto}</p>
+  </div>
+</section>
+
+<style>
+  .bienvenida {
+    --piso: #c4e2d6;
+    --zoclo: #a9d3c3;
+
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    margin-bottom: 20px;
+    border: var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: var(--color-surface);
+  }
+
+  .cuarto {
+    --canela: 148px;
+    --alto-piso: 42px;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    align-self: stretch;
+    width: 184px;
+    padding-top: 12px;
+    border-right: var(--border);
+    overflow: hidden;
+    background: linear-gradient(
+      to top,
+      var(--piso) calc(var(--alto-piso) - 5px),
+      var(--zoclo) 0 var(--alto-piso),
+      var(--color-mint) 0
+    );
+  }
+
+  .canela {
+    flex-shrink: 0;
+    width: var(--canela);
+    height: auto;
+    margin-bottom: calc(var(--alto-piso) - var(--canela) * 162 / 580);
+
+    :global(rect:nth-of-type(-n + 3)) {
+      display: none;
+    }
+
+    :global(path:first-of-type) {
+      transform-box: fill-box;
+      transform-origin: left bottom;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bienvenida:hover .canela :global(path:first-of-type) {
+      animation: menear 0.55s ease-in-out infinite;
+    }
+  }
+
+  .mensaje {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 20px 24px;
+
+    h2 {
+      margin: 2px 0 0;
+      font-family: var(--font-bold);
+      font-size: 1.35rem;
+      line-height: 1.2;
+    }
+
+    p {
+      max-width: 62ch;
+      margin: 0;
+      color: var(--color-accent-texto);
+      line-height: 1.5;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .bienvenida {
+      grid-template-columns: 1fr;
+    }
+
+    .cuarto {
+      width: 100%;
+      border-right: none;
+      border-bottom: var(--border);
+    }
+
+    .mensaje {
+      padding: 18px 20px;
+    }
+  }
+</style>

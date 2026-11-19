@@ -1,30 +1,75 @@
 ---
 import Sistema from "../../layouts/Sistema.astro";
+import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { numero } from "../../lib/formato";
+import { servicios, type Servicio } from "../../lib/citas";
+import { fecha, numero } from "../../lib/formato";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
 
-// Los deshabilitados no cuentan: ya no se usan en la clínica
-const { rows } = await pool.query<{ usuarios: number; productos: number; agotandose: number }>(
-  `select (select count(*) from "user")::int as usuarios,
-          count(*)::int as productos,
-          count(*) filter (where cantidad <= stock_minimo)::int as agotandose
-   from inventario
-   where activo`,
-);
-const { usuarios, productos, agotandose } = rows[0];
+type Proxima = {
+  id: string;
+  mascota: string;
+  cliente: string;
+  fecha: string;
+  hora: string;
+  servicio: Servicio;
+  estado: string;
+};
 
-// La de productos lleva al inventario; las demás todavía no tienen página
+// Los productos deshabilitados y las citas canceladas no cuentan
+const [{ rows }, { rows: proximas }] = await Promise.all([
+  pool.query<{
+    personal: number;
+    clientes: number;
+    citas: number;
+    citas_hoy: number;
+    productos: number;
+    agotandose: number;
+  }>(
+    `select (select count(*)::int from "user" where role <> 'cliente') as personal,
+            (select count(*)::int from "user" where role = 'cliente') as clientes,
+            (select count(*)::int from citas
+             where estado in ('pendiente', 'confirmada')
+               and fecha + hora > (now() at time zone 'America/Mexico_City')) as citas,
+            (select count(*)::int from citas
+             where estado in ('pendiente', 'confirmada')
+               and fecha = (now() at time zone 'America/Mexico_City')::date) as citas_hoy,
+            count(*)::int as productos,
+            count(*) filter (where cantidad <= stock_minimo)::int as agotandose
+     from inventario
+     where activo`,
+  ),
+  pool.query<Proxima>(
+    `select c.id, c.mascota, u.name as cliente, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
+            to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.estado
+     from citas c
+     join "user" u on u.id = c.cliente_id
+     where c.estado in ('pendiente', 'confirmada')
+       and c.fecha + c.hora > (now() at time zone 'America/Mexico_City')
+     order by c.fecha, c.hora
+     limit 5`,
+  ),
+]);
+const { personal, clientes, citas, citas_hoy, productos, agotandose } = rows[0];
+
 const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string }[] = [
   {
-    titulo: "Usuarios",
-    valor: numero.format(usuarios),
-    nota: "Cuentas del personal",
-    icono: "usuarios",
+    titulo: "Citas próximas",
+    valor: numero.format(citas),
+    nota: citas_hoy ? `${citas_hoy} hoy` : "Ninguna hoy",
+    icono: "citas",
+    href: "/dashboard/citas",
+  },
+  {
+    titulo: "Clientes",
+    valor: numero.format(clientes),
+    nota: clientes ? "Cuentas registradas" : "Aún sin registro",
+    icono: "clientes",
+    href: "/dashboard/clientes",
   },
   {
     titulo: "Productos",
@@ -34,15 +79,20 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     href: "/dashboard/inventario",
   },
   {
-    titulo: "Clientes",
-    valor: "—",
-    nota: "Aún sin registro",
-    icono: "clientes",
+    titulo: "Personal",
+    valor: numero.format(personal),
+    nota: "Cuentas de la clínica",
+    icono: "usuarios",
   },
 ];
 ---
 
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
+  <BienvenidaMascota
+    titulo="¡Buen día en la clínica!"
+    texto="Aquí tienes el resumen de hoy: revisa las próximas citas, las cuentas de los clientes y las existencias del inventario."
+  />
+
   <ul class="tarjetas">
     {
       tarjetas.map(({ titulo, valor, nota, icono, href }) => {
@@ -62,6 +112,48 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
       })
     }
   </ul>
+
+  {
+    proximas.length > 0 && (
+      <section class="bloque" aria-labelledby="titulo-proximas">
+        <div class="bloque-encabezado">
+          <h2 id="titulo-proximas">Próximas citas</h2>
+          <a href="/dashboard/citas">Ver todas</a>
+        </div>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Próximas citas">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Mascota</th>
+                <th>Cliente</th>
+                <th>Servicio</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {proximas.map((c) => (
+                <tr>
+                  <td>
+                    {fecha.format(new Date(`${c.fecha}T00:00:00Z`))},{" "}
+                    <strong class="hora">{c.hora}</strong>
+                  </td>
+                  <td class="nombre">{c.mascota}</td>
+                  <td>{c.cliente}</td>
+                  <td>{servicios[c.servicio]}</td>
+                  <td>
+                    <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>
+                      {c.estado === "pendiente" ? "Pendiente" : "Confirmada"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 </Sistema>
 
 <style>
@@ -128,5 +220,10 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 
   .nota {
     color: var(--color-accent-texto);
+  }
+
+  .nombre,
+  .hora {
+    font-family: var(--font-bold);
   }
 </style>

@@ -1,22 +1,41 @@
 import { ActionError, defineAction, type ActionAPIContext } from "astro:actions";
 import { z } from "astro/zod";
+import { randomBytes } from "node:crypto";
+import { APIError } from "better-auth/api";
+import { auth } from "../lib/auth";
 import { pool } from "../lib/db";
-import { acciones } from "../lib/permisos";
+import { acciones, esCliente, type Seccion } from "../lib/permisos";
+import { ahoraEnClinica, claves, especies, estados, horarios, servicios } from "../lib/citas";
 
-// Lo que cambia el inventario y los proveedores. Cada acción revisa en el servidor que el
-// rol de quien la pide tenga el permiso (src/lib/permisos.ts); los botones que se ocultan
-// en la página son solo para no ofrecer lo que no se puede hacer
+// Lo que cambia el inventario, los proveedores, los clientes y las citas. Cada acción
+// revisa en el servidor que el rol de quien la pide tenga el permiso (src/lib/permisos.ts);
+// los botones que se ocultan en la página son solo para no ofrecer lo que no se puede hacer
 
-const exigir = (
-  { locals }: ActionAPIContext,
-  seccion: "inventario" | "proveedores",
-  accion: string,
-) => {
+const exigir = ({ locals }: ActionAPIContext, seccion: Seccion, accion: string) => {
   if (!locals.user) throw new ActionError({ code: "UNAUTHORIZED" });
   if (!acciones(locals.user.role, seccion).includes(accion)) {
     throw new ActionError({ code: "FORBIDDEN", message: "Tu rol no puede hacer esto." });
   }
 };
+
+// Las acciones de mascotas y citas las usan el personal y los clientes. Devuelve el id del
+// cliente que la pide, o null si es del personal (y entonces revisa su permiso)
+const clienteOPermiso = (context: ActionAPIContext, seccion: Seccion, accion: string) => {
+  const { user } = context.locals;
+  if (!user) throw new ActionError({ code: "UNAUTHORIZED" });
+  if (esCliente(user.role)) return user.id;
+  exigir(context, seccion, accion);
+  return null;
+};
+
+// Contraseña al azar para las cuentas de clientes: 12 caracteres de letras, números, - y _
+const passwordAlAzar = () => randomBytes(9).toString("base64url");
+
+// 23505: se repitió un valor que la base no deja repetir (unique)
+const esRepetido = (error: unknown) => (error as { code?: string }).code === "23505";
+
+const horarioOcupado = () =>
+  new ActionError({ code: "CONFLICT", message: "Ese horario ya está ocupado. Elige otro." });
 
 // Los mensajes que no se escriben a mano, también en español
 z.config(z.locales.es());
@@ -162,7 +181,7 @@ export const server = {
           }
         } catch (error) {
           // 23505: ya hay otro proveedor con ese nombre (la columna es unique)
-          if ((error as { code?: string }).code === "23505") {
+          if (esRepetido(error)) {
             throw new ActionError({
               code: "CONFLICT",
               message: `Ya hay un proveedor que se llama ${p.nombre}.`,
@@ -179,6 +198,228 @@ export const server = {
       handler: async ({ id }, context) => {
         exigir(context, "proveedores", "eliminar");
         await pool.query("delete from proveedores where id = $1", [id]);
+      },
+    }),
+  },
+
+  clientes: {
+    // Crea la cuenta de un cliente o, si trae id, corrige sus datos. Al crearla se le da
+    // una contraseña al azar, que se devuelve una sola vez para que se la pasen; luego él
+    // la cambia en Mi cuenta
+    guardar: defineAction({
+      accept: "form",
+      input: z.object({
+        id: opcional,
+        nombre: z.string().trim().min(1, "Escribe el nombre del cliente."),
+        correo: z.string().trim().toLowerCase().pipe(z.email("El correo no es válido.")),
+        telefono: opcional,
+      }),
+      handler: async ({ id, nombre, correo, telefono }, context) => {
+        exigir(context, "clientes", id ? "editar" : "crear");
+        const repetido = new ActionError({
+          code: "CONFLICT",
+          message: `Ya hay una cuenta con el correo ${correo}.`,
+        });
+
+        if (id) {
+          try {
+            const { rowCount } = await pool.query(
+              `update "user" set name = $2, email = $3, telefono = $4, "updatedAt" = now()
+               where id = $1 and role = 'cliente'`,
+              [id, nombre, correo, telefono],
+            );
+            if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
+          } catch (error) {
+            if (esRepetido(error)) throw repetido;
+            throw error;
+          }
+          return { password: null };
+        }
+
+        const password = passwordAlAzar();
+        try {
+          // Sin headers: lo crea el servidor, ya revisado el permiso arriba
+          await auth.api.createUser({
+            body: { email: correo, password, name: nombre, role: "cliente", data: { telefono } },
+          });
+        } catch (error) {
+          if (error instanceof APIError && error.status === "BAD_REQUEST") throw repetido;
+          throw error;
+        }
+        return { password };
+      },
+    }),
+
+    // Para cuando el cliente olvidó la suya: le da otra al azar y cierra sus sesiones
+    nuevaPassword: defineAction({
+      input: z.object({ id: z.string().min(1) }),
+      handler: async ({ id }, context) => {
+        exigir(context, "clientes", "editar");
+        const { rowCount } = await pool.query(
+          `select 1 from "user" where id = $1 and role = 'cliente'`,
+          [id],
+        );
+        if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
+
+        const password = passwordAlAzar();
+        const ctx = await auth.$context;
+        const hash = await ctx.password.hash(password);
+        const { rowCount: actualizadas } = await pool.query(
+          `update account set password = $2, "updatedAt" = now()
+           where "userId" = $1 and "providerId" = 'credential'`,
+          [id, hash],
+        );
+        if (!actualizadas) {
+          throw new ActionError({
+            code: "NOT_FOUND",
+            message: "No se encontró el acceso con contraseña de ese cliente.",
+          });
+        }
+        await pool.query(`delete from session where "userId" = $1`, [id]);
+        return { password };
+      },
+    }),
+
+    // Da de baja la cuenta del cliente y sus citas (on delete cascade)
+    borrar: defineAction({
+      input: z.object({ id: z.string().min(1) }),
+      handler: async ({ id }, context) => {
+        exigir(context, "clientes", "eliminar");
+        const { rowCount } = await pool.query(
+          `delete from "user" where id = $1 and role = 'cliente'`,
+          [id],
+        );
+        if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
+      },
+    }),
+
+    // Guarda que el cliente aceptó los términos y condiciones al entrar por primera vez
+    aceptarTerminos: defineAction({
+      accept: "form",
+      input: z.object({
+        acepto: z.literal("on", "Debes aceptar los términos y condiciones para continuar."),
+      }),
+      handler: async (_, context) => {
+        const { user } = context.locals;
+        if (!user || !esCliente(user.role)) throw new ActionError({ code: "UNAUTHORIZED" });
+        await pool.query(
+          `update "user"
+           set terminos_aceptados_en = coalesce(terminos_aceptados_en, now()), "updatedAt" = now()
+           where id = $1 and role = 'cliente'`,
+          [user.id],
+        );
+        // Borra el caché de la sesión para que la siguiente página ya traiga la fecha
+        context.cookies.delete("better-auth.session_data", { path: "/" });
+        context.cookies.delete("__Secure-better-auth.session_data", { path: "/" });
+      },
+    }),
+  },
+
+  citas: {
+    // Los horarios ya apartados de un día, para no ofrecerlos en el formulario. Solo las
+    // horas: no dice de quién son. Al editar se excluye la cita que se está cambiando
+    ocupadas: defineAction({
+      input: z.object({ fecha: z.iso.date(), excluir: z.uuid().nullish() }),
+      handler: async ({ fecha, excluir }, context) => {
+        clienteOPermiso(context, "citas", "ver");
+        const { rows } = await pool.query<{ hora: string }>(
+          `select to_char(hora, 'HH24:MI') as hora from citas
+           where fecha = $1 and estado <> 'cancelada' and ($2::uuid is null or id <> $2)`,
+          [fecha, excluir ?? null],
+        );
+        return rows.map(({ hora }) => hora);
+      },
+    }),
+
+    // Agenda una cita o, si trae id, la cambia. El personal puede corregir cualquier dato
+    // (también el estado y fechas pasadas, por si se anotó mal). El cliente solo agenda las
+    // suyas, en horarios que no han pasado, y si cambia una cita vuelve a quedar pendiente
+    // para que la clínica la confirme
+    guardar: defineAction({
+      accept: "form",
+      input: z.object({
+        id: opcional.pipe(z.uuid().nullable()),
+        cliente_id: opcional,
+        mascota: z.string().trim().min(1, "Escribe el nombre de la mascota."),
+        especie: z.enum(claves(especies), "Elige la especie."),
+        fecha: z.iso.date("Elige la fecha."),
+        hora: z.enum(horarios, "Elige un horario entre 9:00 y 15:30."),
+        servicio: z.enum(claves(servicios), "Elige el servicio."),
+        motivo: opcional,
+        estado: opcional.pipe(z.enum(claves(estados)).nullable()),
+      }),
+      handler: async (c, context) => {
+        const cliente = clienteOPermiso(context, "citas", c.id ? "editar" : "crear");
+        const duenio = cliente ?? c.cliente_id;
+        if (!duenio) {
+          throw new ActionError({ code: "BAD_REQUEST", message: "Elige de qué cliente es la cita." });
+        }
+
+        if (cliente) {
+          const ahora = ahoraEnClinica();
+          if (`${c.fecha} ${c.hora}` <= `${ahora.fecha} ${ahora.hora}`) {
+            throw new ActionError({ code: "BAD_REQUEST", message: "Elige un día y una hora que no hayan pasado." });
+          }
+        } else {
+          const { rowCount } = await pool.query(
+            `select 1 from "user" where id = $1 and role = 'cliente'`,
+            [duenio],
+          );
+          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Ese cliente ya no existe." });
+        }
+
+        const estado = cliente ? "pendiente" : (c.estado ?? "pendiente");
+        const valores = [duenio, c.mascota, c.especie, c.fecha, c.hora, c.servicio, c.motivo, estado];
+
+        try {
+          if (c.id) {
+            // Un cliente solo cambia las suyas que siguen activas y no han pasado
+            const { rowCount } = await pool.query(
+              `update citas set
+                 cliente_id = $2, mascota = $3, especie = $4, fecha = $5, hora = $6,
+                 servicio = $7, motivo = $8, estado = $9, actualizado_en = now()
+               where id = $1
+                 and ($10::text is null or (
+                   cliente_id = $10
+                   and estado in ('pendiente', 'confirmada')
+                   and fecha + hora > (now() at time zone 'America/Mexico_City')
+                 ))`,
+              [c.id, ...valores, cliente],
+            );
+            if (!rowCount) {
+              throw new ActionError({ code: "NOT_FOUND", message: "Esa cita ya no se puede cambiar." });
+            }
+          } else {
+            await pool.query(
+              `insert into citas (cliente_id, mascota, especie, fecha, hora, servicio, motivo, estado)
+               values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              valores,
+            );
+          }
+        } catch (error) {
+          if (esRepetido(error)) throw horarioOcupado();
+          throw error;
+        }
+      },
+    }),
+
+    // El cliente cancela una de sus citas que no ha pasado; su horario queda libre.
+    // El personal cancela cambiando el estado al editar
+    cancelar: defineAction({
+      input: z.object({ id: z.uuid() }),
+      handler: async ({ id }, context) => {
+        const cliente = clienteOPermiso(context, "citas", "editar");
+        const { rowCount } = await pool.query(
+          `update citas set estado = 'cancelada', actualizado_en = now()
+           where id = $1
+             and estado in ('pendiente', 'confirmada')
+             and ($2::text is null or (
+               cliente_id = $2
+               and fecha + hora > (now() at time zone 'America/Mexico_City')
+             ))`,
+          [id, cliente],
+        );
+        if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Esa cita ya no se puede cancelar." });
       },
     }),
   },

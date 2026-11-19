@@ -1,22 +1,47 @@
 ---
-// Layout de las páginas del sistema (/dashboard/...): el sidebar con las secciones a la
-// izquierda y abajo de él la cuenta de quien entró, con Mi cuenta y Cerrar sesión.
+// Layout de las páginas del sistema (/dashboard/...) y del panel de clientes (/cliente/...):
+// el sidebar con las secciones a la izquierda y abajo de él la cuenta de quien entró, con
+// Mi cuenta y Cerrar sesión. Las secciones dependen de si es personal o cliente.
 // El middleware ya mandó al login a quien no tiene sesión, así que aquí siempre hay user
 import Layout from "./Layout.astro";
 import Icono, { type NombreIcono } from "../components/sistema/Icono.astro";
+import TerminosCliente from "../components/sistema/TerminosCliente.astro";
 import Logo from "../assets/logo.svg";
-import { nombreRol, type Rol } from "../lib/permisos";
+import { pool } from "../lib/db";
+import { esCliente, inicioDe, nombreRol, type Rol } from "../lib/permisos";
 import { fotoDeCorreo } from "../data/fotos";
 
 // titulo va en la pestaña; encabezado, si se pasa, es el h1 de la página
 const { titulo, encabezado = titulo } = Astro.props;
 const user = Astro.locals.user!;
+const cliente = esCliente(user.role);
+const inicio = inicioDe(user.role);
+const cuenta = `${inicio}/cuenta`;
 
-const secciones: { href: string; texto: string; icono: NombreIcono }[] = [
-  { href: "/dashboard", texto: "Inicio", icono: "inicio" },
-  { href: "/dashboard/inventario", texto: "Inventario", icono: "inventario" },
-  { href: "/dashboard/proveedores", texto: "Proveedores", icono: "proveedores" },
-];
+// Si la cookie de sesión todavía no trae la fecha (dura 5 minutos), se confirma en la base
+// para no volver a pedir los términos después de que el cliente los acepta
+const pedirTerminos =
+  cliente &&
+  !user.terminos_aceptados_en &&
+  !(
+    await pool.query<{ aceptados: boolean }>(
+      `select terminos_aceptados_en is not null as aceptados from "user" where id = $1`,
+      [user.id],
+    )
+  ).rows[0]?.aceptados;
+
+const secciones: { href: string; texto: string; icono: NombreIcono }[] = cliente
+  ? [
+      { href: "/cliente", texto: "Inicio", icono: "inicio" },
+      { href: "/cliente/citas", texto: "Mis citas", icono: "citas" },
+    ]
+  : [
+      { href: "/dashboard", texto: "Inicio", icono: "inicio" },
+      { href: "/dashboard/citas", texto: "Citas", icono: "citas" },
+      { href: "/dashboard/clientes", texto: "Clientes", icono: "clientes" },
+      { href: "/dashboard/inventario", texto: "Inventario", icono: "inventario" },
+      { href: "/dashboard/proveedores", texto: "Proveedores", icono: "proveedores" },
+    ];
 
 const actual = Astro.url.pathname.replace(/\/$/, "");
 const rol = nombreRol[user.role as Rol] ?? user.role;
@@ -30,7 +55,10 @@ const iniciales = user.name
   .join("");
 ---
 
-<Layout titulo={titulo} descripcion="Sistema interno de VetCareHub.">
+<Layout
+  titulo={titulo}
+  descripcion={cliente ? "Panel de clientes de VetCareHub." : "Sistema interno de VetCareHub."}
+>
   <div class="sistema">
     <!-- En celular el sidebar se esconde y esta barra lo abre -->
     <div class="barra">
@@ -43,12 +71,12 @@ const iniciales = user.name
       >
         <Icono nombre="menu" />
       </button>
-      <a href="/dashboard" class="barra-marca">VetCareHub</a>
+      <a href={inicio} class="barra-marca">VetCareHub</a>
     </div>
     <div class="fondo" data-fondo></div>
 
     <aside id="sidebar-sistema" class="sidebar" aria-label="Sistema">
-      <a href="/dashboard" class="marca">
+      <a href={inicio} class="marca">
         <Logo class="logo" aria-hidden="true" />
         <span>VetCareHub</span>
       </a>
@@ -68,8 +96,8 @@ const iniciales = user.name
         <ul id="menu-cuenta" class="menu" hidden>
           <li>
             <a
-              href="/dashboard/cuenta"
-              aria-current={actual === "/dashboard/cuenta" ? "page" : undefined}
+              href={cuenta}
+              aria-current={actual === cuenta ? "page" : undefined}
             >
               <Icono nombre="cuenta" />
               Mi cuenta
@@ -115,6 +143,7 @@ const iniciales = user.name
         <slot name="acciones" />
       </div>
       <slot />
+      {pedirTerminos && <TerminosCliente />}
     </main>
 
     <!-- Errores de las acciones de la tabla (+, −, deshabilitar, borrar) -->
@@ -155,8 +184,12 @@ const iniciales = user.name
 
   salir?.addEventListener("click", async () => {
     salir.disabled = true;
-    await authClient.signOut();
-    location.assign("/");
+    try {
+      await authClient.signOut();
+      location.assign("/");
+    } catch {
+      salir.disabled = false;
+    }
   });
 
   // Sidebar en celular
@@ -572,6 +605,7 @@ const iniciales = user.name
       border-radius: 8px;
       background: none;
       color: var(--color-primary);
+      text-decoration: none;
       cursor: pointer;
 
       &:hover:not(:disabled) {

@@ -1,0 +1,158 @@
+---
+// Ventana de términos y condiciones que sale la primera vez que un cliente inicia sesión.
+// No se cierra con Escape: hay que aceptarlos para usar el panel o cerrar la sesión
+---
+
+<dialog id="terminos" class="dialogo" aria-labelledby="titulo-terminos">
+  <form novalidate>
+    <h2 id="titulo-terminos">Términos y condiciones</h2>
+    <div class="terminos-cuerpo">
+      <p class="intro">
+        Te damos la bienvenida a tu panel de cliente de VetCareHub. Antes de continuar,
+        revisa y acepta las condiciones de uso del sistema y de atención en la clínica:
+      </p>
+
+      <ol class="lista-terminos">
+        <li>
+          <strong>Uso de tu cuenta.</strong> Tu cuenta es personal y sirve para consultar y
+          agendar las citas de tus mascotas. Te recomendamos cambiar la contraseña provisional
+          que te dieron en recepción desde el apartado <strong>Mi cuenta</strong>.
+        </li>
+        <li>
+          <strong>Citas y cancelaciones.</strong> Las citas que agendas en el sistema quedan
+          como pendientes hasta que la clínica las confirme. Si necesitas reprogramar o
+          cancelar una cita, hazlo desde <strong>Mis citas</strong> antes de la fecha y hora
+          apartadas para liberar el horario.
+        </li>
+        <li>
+          <strong>Atención en la clínica.</strong> Te pedimos llegar 10 minutos antes de tu
+          cita y traer a tu mascota con correa o en transportadora. Todo diagnóstico,
+          tratamiento o cirugía y su presupuesto se explican y autorizan en persona antes de
+          empezar.
+        </li>
+        <li>
+          <strong>Datos personales.</strong> Tus datos de contacto y el historial de tu
+          mascota se usan únicamente para su atención médica y el seguimiento de sus citas,
+          conforme a nuestro{" "}
+          <a href="/privacidad" target="_blank" rel="noopener">Aviso de privacidad</a>.
+        </li>
+      </ol>
+
+      <label class="casilla">
+        <input type="checkbox" name="acepto" required />
+        <span>
+          He leído y acepto los términos y condiciones y el{" "}
+          <a href="/privacidad" target="_blank" rel="noopener">aviso de privacidad</a> de
+          VetCareHub.
+        </span>
+      </label>
+    </div>
+
+    <p class="error-form" role="alert"></p>
+    <div class="dialogo-botones">
+      <button type="button" class="boton" data-salir-terminos>
+        Cerrar sesión
+      </button>
+      <button type="submit" class="boton principal">
+        Aceptar y continuar
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  import { actions } from "astro:actions";
+  import { authClient } from "../../lib/auth-client";
+  import { enviarConAccion } from "../../scripts/sistema";
+
+  const dialogo = document.querySelector<HTMLDialogElement>("#terminos");
+  const salir = dialogo?.querySelector<HTMLButtonElement>("[data-salir-terminos]");
+
+  if (dialogo) {
+    dialogo.addEventListener("cancel", (event) => event.preventDefault());
+    dialogo.showModal();
+
+    enviarConAccion(dialogo, (datos) => actions.clientes.aceptarTerminos(datos), () => {
+      dialogo.remove();
+    });
+
+    salir?.addEventListener("click", async () => {
+      salir.disabled = true;
+      try {
+        await authClient.signOut();
+        location.assign("/login");
+      } catch {
+        salir.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .terminos-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 22px 24px;
+    line-height: 1.55;
+
+    p {
+      margin: 0;
+    }
+
+    strong {
+      font-family: var(--font-bold);
+    }
+
+    a {
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      text-underline-offset: 3px;
+
+      &:hover {
+        color: var(--color-accent-texto);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  .lista-terminos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 16px 18px 16px 34px;
+    border: var(--border);
+    border-radius: 12px;
+    background-color: var(--color-white);
+  }
+
+  .casilla {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: var(--border);
+    border-radius: 10px;
+    background-color: var(--color-mint);
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      margin-top: 2px;
+      accent-color: var(--color-primary);
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+    }
+  }
+</style>

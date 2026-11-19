@@ -1,0 +1,103 @@
+---
+// Ventana para agendar o cambiar una cita. La usan /dashboard/citas (el personal elige el
+// cliente, cualquier día y el estado, para corregir errores) y /cliente/citas (el cliente
+// agenda para sí mismo en un día que no haya pasado). Al elegir el día, la página desactiva
+// los horarios ocupados con activarHorarios (src/scripts/sistema.ts)
+import { ahoraEnClinica, especies, estados, horarios, servicios } from "../../lib/citas";
+
+type Props = {
+  // Si se pasa, el personal elige de qué cliente es la cita y su estado
+  clientes?: { id: string; nombre: string; correo: string }[];
+};
+const { clientes } = Astro.props;
+const personal = Boolean(clientes);
+const hoy = ahoraEnClinica().fecha;
+---
+
+<dialog id="cita" class="dialogo" aria-labelledby="titulo-cita">
+  <form novalidate>
+    <h2 id="titulo-cita">Agendar cita</h2>
+    <input type="hidden" name="id" />
+    <div class="campos">
+      {
+        clientes && (
+          <div class="campo ancho">
+            <label for="ci-cliente">Cliente</label>
+            <select id="ci-cliente" name="cliente_id" required>
+              <option value="">Elige uno</option>
+              {clientes.map(({ id, nombre, correo }) => (
+                <option value={id}>
+                  {nombre} · {correo}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+      <div class="campo">
+        <label for="ci-mascota">Mascota</label>
+        <input id="ci-mascota" name="mascota" autocomplete="off" required />
+      </div>
+      <div class="campo">
+        <label for="ci-especie">Especie</label>
+        <select id="ci-especie" name="especie" required>
+          <option value="">Elige una</option>
+          {Object.entries(especies).map(([valor, texto]) => <option value={valor}>{texto}</option>)}
+        </select>
+      </div>
+      <div class="campo ancho">
+        <label for="ci-servicio">Servicio</label>
+        <select id="ci-servicio" name="servicio" required>
+          <option value="">Elige uno</option>
+          {Object.entries(servicios).map(([valor, texto]) => <option value={valor}>{texto}</option>)}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="ci-fecha">Día</label>
+        <input id="ci-fecha" name="fecha" type="date" min={personal ? undefined : hoy} required />
+      </div>
+      <div class="campo">
+        <label for="ci-hora">Hora</label>
+        <select id="ci-hora" name="hora" required aria-describedby="ci-ayuda">
+          <option value="">Elige una</option>
+          {horarios.map((hora) => <option value={hora}>{hora}</option>)}
+        </select>
+      </div>
+      <p id="ci-ayuda" class="ayuda-cita ancho">
+        Atendemos cada 30 minutos de 9:00 a 16:00. Los horarios ocupados no se pueden elegir.
+      </p>
+      {
+        personal && (
+          <div class="campo ancho">
+            <label for="ci-estado">Estado</label>
+            <select id="ci-estado" name="estado" required>
+              {Object.entries(estados).map(([valor, texto]) => (
+                <option value={valor}>{texto}</option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+      <div class="campo ancho">
+        <label for="ci-motivo">Motivo</label>
+        <input id="ci-motivo" name="motivo" autocomplete="off" placeholder="Qué le pasa o qué necesita" />
+      </div>
+    </div>
+    <p class="error-form" role="alert"></p>
+    <div class="dialogo-botones">
+      <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+        Cancelar
+      </button>
+      <button type="submit" class="boton principal">Agendar cita</button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  .ayuda-cita {
+    grid-column: 1 / -1;
+    margin: -6px 0 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+</style>
