@@ -25,11 +25,12 @@ const puedeEditar = permisos.includes("editar");
 
 type Cita = {
   id: string;
+  mascota_id: string;
+  mascota: string;
+  especie: Especie;
   cliente_id: string;
   cliente: string;
   telefono: string | null;
-  mascota: string;
-  especie: Especie;
   fecha: string;
   hora: string;
   servicio: Servicio;
@@ -39,15 +40,16 @@ type Cita = {
 
 // Primero las que siguen pendientes o confirmadas (de la más próxima a la más lejana) y al
 // final las completadas y canceladas (de la más reciente a la más antigua)
-const [citas, clientes] = puedeVer
+const [citas, mascotas] = puedeVer
   ? await Promise.all([
       pool
         .query<Cita>(
-          `select c.id, c.cliente_id, u.name as cliente, u.telefono, c.mascota, c.especie,
-                  to_char(c.fecha, 'YYYY-MM-DD') as fecha, to_char(c.hora, 'HH24:MI') as hora,
-                  c.servicio, c.motivo, c.estado
+          `select c.id, c.mascota_id, m.nombre as mascota, m.especie, u.id as cliente_id,
+                  u.name as cliente, u.telefono, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
+                  to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.motivo, c.estado
            from citas c
-           join "user" u on u.id = c.cliente_id
+           join mascotas m on m.id = c.mascota_id
+           join "user" u on u.id = m.cliente_id
            order by c.estado in ('completada', 'cancelada'),
                     case when c.estado in ('completada', 'cancelada') then -extract(epoch from c.fecha + c.hora)
                          else extract(epoch from c.fecha + c.hora) end`,
@@ -55,8 +57,11 @@ const [citas, clientes] = puedeVer
         .then(({ rows }) => rows),
       puedeCrear || puedeEditar
         ? pool
-            .query<{ id: string; nombre: string; correo: string }>(
-              `select id, name as nombre, email as correo from "user" where role = 'cliente' order by name`,
+            .query<{ id: string; nombre: string; duenio: string }>(
+              `select m.id, m.nombre, u.name as duenio
+               from mascotas m
+               join "user" u on u.id = m.cliente_id
+               order by u.name, m.nombre`,
             )
             .then(({ rows }) => rows)
         : [],
@@ -78,7 +83,7 @@ const claseEstado = (estado: Estado) =>
     )
   }
   {
-    puedeCrear && clientes.length > 0 && (
+    puedeCrear && mascotas.length > 0 && (
       <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
         <Icono nombre="mas" />
         Agendar cita
@@ -92,10 +97,10 @@ const claseEstado = (estado: Estado) =>
     ) : citas.length === 0 ? (
       <p class="vacio">
         Todavía no hay citas.
-        {clientes.length === 0 ? (
+        {mascotas.length === 0 ? (
           <>
             {" "}
-            Primero registra un cliente en <a href="/dashboard/clientes">Clientes</a>.
+            Primero registra un cliente y su mascota en <a href="/dashboard/clientes">Clientes</a>.
           </>
         ) : (
           puedeCrear && " Agenda la primera con Agendar cita."
@@ -143,7 +148,9 @@ const claseEstado = (estado: Estado) =>
                     <span class="nombre">{c.mascota}</span>
                     <span class="secundario"> · {especies[c.especie]}</span>
                   </td>
-                  <td>{c.cliente}</td>
+                  <td>
+                    <a href={`/dashboard/mascotas?cliente=${c.cliente_id}`}>{c.cliente}</a>
+                  </td>
                   <td>
                     {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
                   </td>
@@ -187,7 +194,7 @@ const claseEstado = (estado: Estado) =>
     )
   }
 
-  {(puedeCrear || puedeEditar) && <FormCita clientes={clientes} />}
+  {(puedeCrear || puedeEditar) && <FormCita mascotas={mascotas} personal />}
 </Sistema>
 
 <script>

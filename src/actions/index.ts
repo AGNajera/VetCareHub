@@ -315,6 +315,59 @@ export const server = {
     }),
   },
 
+  mascotas: {
+    // Crea una nueva o, si trae id, edita esa. El cliente solo las suyas; el personal elige
+    // de qué cliente es
+    guardar: defineAction({
+      accept: "form",
+      input: z.object({
+        id: opcional.pipe(z.uuid().nullable()),
+        cliente_id: opcional,
+        nombre: z.string().trim().min(1, "Escribe el nombre de la mascota."),
+        especie: z.enum(claves(especies), "Elige la especie."),
+        raza: opcional,
+        nacimiento: opcional.pipe(z.iso.date("La fecha de nacimiento no es válida.").nullable()),
+        notas: opcional,
+      }),
+      handler: async (m, context) => {
+        const cliente = clienteOPermiso(context, "clientes", m.id ? "editar" : "crear");
+        const duenio = cliente ?? m.cliente_id;
+        if (!duenio) {
+          throw new ActionError({ code: "BAD_REQUEST", message: "Elige de quién es la mascota." });
+        }
+        if (m.nacimiento && m.nacimiento > ahoraEnClinica().fecha) {
+          throw new ActionError({ code: "BAD_REQUEST", message: "La fecha de nacimiento no puede ser futura." });
+        }
+        if (!cliente) {
+          const { rowCount } = await pool.query(
+            `select 1 from "user" where id = $1 and role = 'cliente'`,
+            [duenio],
+          );
+          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Ese cliente ya no existe." });
+        }
+
+        const valores = [duenio, m.nombre, m.especie, m.raza, m.nacimiento, m.notas];
+        if (m.id) {
+          // Un cliente solo encuentra las suyas; el personal puede cambiarla de dueño
+          const { rowCount } = await pool.query(
+            `update mascotas set
+               cliente_id = $2, nombre = $3, especie = $4, raza = $5, nacimiento = $6,
+               notas = $7, actualizado_en = now()
+             where id = $1 and ($8::text is null or cliente_id = $8)`,
+            [m.id, ...valores, cliente],
+          );
+          if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Esa mascota ya no existe." });
+        } else {
+          await pool.query(
+            `insert into mascotas (cliente_id, nombre, especie, raza, nacimiento, notas)
+             values ($1, $2, $3, $4, $5, $6)`,
+            valores,
+          );
+        }
+      },
+    }),
+  },
+
   citas: {
     // Los horarios ya apartados de un día, para no ofrecerlos en el formulario. Solo las
     // horas: no dice de quién son. Al editar se excluye la cita que se está cambiando
@@ -332,16 +385,14 @@ export const server = {
     }),
 
     // Agenda una cita o, si trae id, la cambia. El personal puede corregir cualquier dato
-    // (también el estado y fechas pasadas, por si se anotó mal). El cliente solo agenda las
-    // suyas, en horarios que no han pasado, y si cambia una cita vuelve a quedar pendiente
-    // para que la clínica la confirme
+    // (también el estado y fechas pasadas, por si se anotó mal). El cliente solo agenda para
+    // sus mascotas, en horarios que no han pasado, y si cambia una cita vuelve a quedar
+    // pendiente para que la clínica la confirme
     guardar: defineAction({
       accept: "form",
       input: z.object({
         id: opcional.pipe(z.uuid().nullable()),
-        cliente_id: opcional,
-        mascota: z.string().trim().min(1, "Escribe el nombre de la mascota."),
-        especie: z.enum(claves(especies), "Elige la especie."),
+        mascota_id: z.uuid("Elige la mascota."),
         fecha: z.iso.date("Elige la fecha."),
         hora: z.enum(horarios, "Elige un horario entre 9:00 y 15:30."),
         servicio: z.enum(claves(servicios), "Elige el servicio."),
@@ -350,39 +401,37 @@ export const server = {
       }),
       handler: async (c, context) => {
         const cliente = clienteOPermiso(context, "citas", c.id ? "editar" : "crear");
-        const duenio = cliente ?? c.cliente_id;
-        if (!duenio) {
-          throw new ActionError({ code: "BAD_REQUEST", message: "Elige de qué cliente es la cita." });
-        }
 
         if (cliente) {
           const ahora = ahoraEnClinica();
           if (`${c.fecha} ${c.hora}` <= `${ahora.fecha} ${ahora.hora}`) {
             throw new ActionError({ code: "BAD_REQUEST", message: "Elige un día y una hora que no hayan pasado." });
           }
-        } else {
           const { rowCount } = await pool.query(
-            `select 1 from "user" where id = $1 and role = 'cliente'`,
-            [duenio],
+            "select 1 from mascotas where id = $1 and cliente_id = $2",
+            [c.mascota_id, cliente],
           );
-          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Ese cliente ya no existe." });
+          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Elige una de tus mascotas." });
+        } else {
+          const { rowCount } = await pool.query("select 1 from mascotas where id = $1", [c.mascota_id]);
+          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Esa mascota ya no existe." });
         }
 
         const estado = cliente ? "pendiente" : (c.estado ?? "pendiente");
-        const valores = [duenio, c.mascota, c.especie, c.fecha, c.hora, c.servicio, c.motivo, estado];
+        const valores = [c.mascota_id, c.fecha, c.hora, c.servicio, c.motivo, estado];
 
         try {
           if (c.id) {
             // Un cliente solo cambia las suyas que siguen activas y no han pasado
             const { rowCount } = await pool.query(
               `update citas set
-                 cliente_id = $2, mascota = $3, especie = $4, fecha = $5, hora = $6,
-                 servicio = $7, motivo = $8, estado = $9, actualizado_en = now()
+                 mascota_id = $2, fecha = $3, hora = $4, servicio = $5, motivo = $6,
+                 estado = $7, actualizado_en = now()
                where id = $1
-                 and ($10::text is null or (
-                   cliente_id = $10
-                   and estado in ('pendiente', 'confirmada')
+                 and ($8::text is null or (
+                   estado in ('pendiente', 'confirmada')
                    and fecha + hora > (now() at time zone 'America/Mexico_City')
+                   and mascota_id in (select id from mascotas where cliente_id = $8)
                  ))`,
               [c.id, ...valores, cliente],
             );
@@ -391,8 +440,8 @@ export const server = {
             }
           } else {
             await pool.query(
-              `insert into citas (cliente_id, mascota, especie, fecha, hora, servicio, motivo, estado)
-               values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              `insert into citas (mascota_id, fecha, hora, servicio, motivo, estado)
+               values ($1, $2, $3, $4, $5, $6)`,
               valores,
             );
           }
@@ -414,8 +463,8 @@ export const server = {
            where id = $1
              and estado in ('pendiente', 'confirmada')
              and ($2::text is null or (
-               cliente_id = $2
-               and fecha + hora > (now() at time zone 'America/Mexico_City')
+               fecha + hora > (now() at time zone 'America/Mexico_City')
+               and mascota_id in (select id from mascotas where cliente_id = $2)
              ))`,
           [id, cliente],
         );

@@ -1,0 +1,64 @@
+---
+// Ventana para registrar o editar una mascota. La usan /dashboard/mascotas, donde el
+// personal elige de qué cliente es (se pasan los clientes), y /cliente/mascotas, donde
+// siempre es de quien entró. La página la abre y la llena (llenarFormulario)
+import { ahoraEnClinica, especies } from "../../lib/citas";
+
+type Props = { clientes?: { id: string; nombre: string; correo: string }[] };
+const { clientes } = Astro.props;
+const hoy = ahoraEnClinica().fecha;
+---
+
+<dialog id="mascota" class="dialogo" aria-labelledby="titulo-mascota">
+  <form novalidate>
+    <h2 id="titulo-mascota">Nueva mascota</h2>
+    <input type="hidden" name="id" />
+    <div class="campos">
+      {
+        clientes && (
+          <div class="campo ancho">
+            <label for="m-cliente">Cliente</label>
+            <select id="m-cliente" name="cliente_id" required>
+              <option value="">Elige uno</option>
+              {clientes.map(({ id, nombre, correo }) => (
+                <option value={id}>
+                  {nombre} · {correo}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
+      }
+      <div class="campo">
+        <label for="m-nombre">Nombre</label>
+        <input id="m-nombre" name="nombre" autocomplete="off" required />
+      </div>
+      <div class="campo">
+        <label for="m-especie">Especie</label>
+        <select id="m-especie" name="especie" required>
+          <option value="">Elige una</option>
+          {Object.entries(especies).map(([valor, texto]) => <option value={valor}>{texto}</option>)}
+        </select>
+      </div>
+      <div class="campo">
+        <label for="m-raza">Raza</label>
+        <input id="m-raza" name="raza" autocomplete="off" placeholder="Mestizo, labrador…" />
+      </div>
+      <div class="campo">
+        <label for="m-nacimiento">Nacimiento</label>
+        <input id="m-nacimiento" name="nacimiento" type="date" max={hoy} />
+      </div>
+      <div class="campo ancho">
+        <label for="m-notas">Notas</label>
+        <input id="m-notas" name="notas" autocomplete="off" placeholder="Alergias, carácter, lo que convenga saber" />
+      </div>
+    </div>
+    <p class="error-form" role="alert"></p>
+    <div class="dialogo-botones">
+      <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+        Cancelar
+      </button>
+      <button type="submit" class="boton principal">Agregar mascota</button>
+    </div>
+  </form>
+</dialog>

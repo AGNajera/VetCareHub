@@ -21,12 +21,13 @@ export const GET: APIRoute = async ({ params, locals }) => {
   if (!id || !uuidRegex.test(id)) return new Response(null, { status: 404 });
 
   const { rows } = await pool.query<DatosCitaPdf>(
-    `select c.id, c.mascota, c.especie, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
+    `select c.id, m.nombre as mascota, m.especie, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
             to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.motivo, c.estado,
             c.creado_en, u.name as cliente, u.email as correo, u.telefono
      from citas c
-     join "user" u on u.id = c.cliente_id
-     where c.id = $1 and ($2::text is null or c.cliente_id = $2)`,
+     join mascotas m on m.id = c.mascota_id
+     join "user" u on u.id = m.cliente_id
+     where c.id = $1 and ($2::text is null or m.cliente_id = $2)`,
     [id, cliente],
   );
 

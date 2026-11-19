@@ -1,0 +1,209 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import FormMascota from "../../components/sistema/FormMascota.astro";
+import { pool } from "../../lib/db";
+import { acciones } from "../../lib/permisos";
+import { especies, type Especie } from "../../lib/citas";
+import { edad, fecha, normalizar, numero } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+// Las mascotas son parte de los datos de los clientes
+const permisos = acciones(user.role, "clientes");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+const puedeEditar = permisos.includes("editar");
+
+type Mascota = {
+  id: string;
+  cliente_id: string;
+  duenio: string;
+  nombre: string;
+  especie: Especie;
+  raza: string | null;
+  nacimiento: string | null;
+  notas: string | null;
+  citas: number;
+};
+
+// Desde la tabla de clientes se llega con ?cliente=<id> para ver solo las suyas
+const filtro = Astro.url.searchParams.get("cliente") || null;
+
+const [mascotas, clientes] = puedeVer
+  ? await Promise.all([
+      pool
+        .query<Mascota>(
+          `select m.id, m.cliente_id, u.name as duenio, m.nombre, m.especie, m.raza,
+                  to_char(m.nacimiento, 'YYYY-MM-DD') as nacimiento, m.notas,
+                  (select count(*)::int from citas c where c.mascota_id = m.id) as citas
+           from mascotas m
+           join "user" u on u.id = m.cliente_id
+           where $1::text is null or m.cliente_id = $1
+           order by u.name, m.nombre`,
+          [filtro],
+        )
+        .then(({ rows }) => rows),
+      puedeCrear || puedeEditar
+        ? pool
+            .query<{ id: string; nombre: string; correo: string }>(
+              `select id, name as nombre, email as correo from "user" where role = 'cliente' order by name`,
+            )
+            .then(({ rows }) => rows)
+        : [],
+    ])
+  : [[], []];
+
+const deFiltro = filtro ? (clientes.find(({ id }) => id === filtro)?.nombre ?? mascotas[0]?.duenio) : null;
+---
+
+<Sistema titulo="Mascotas" encabezado={deFiltro ? `Mascotas de ${deFiltro}` : "Mascotas"}>
+  {
+    puedeVer && mascotas.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar mascota</span>
+        <Icono nombre="buscar" />
+        <input id="buscar" type="search" placeholder="Buscar por mascota, cliente o raza" autocomplete="off" />
+      </label>
+    )
+  }
+  {
+    puedeCrear && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo data-cliente={filtro}>
+        <Icono nombre="mas" />
+        Nueva mascota
+      </button>
+    )
+  }
+
+  {filtro && <p class="filtro"><a href="/dashboard/mascotas">Ver las mascotas de todos los clientes</a></p>}
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a las mascotas.</p>
+    ) : mascotas.length === 0 ? (
+      <p class="vacio">
+        {filtro ? "Este cliente todavía no tiene mascotas." : "Todavía no hay mascotas."}
+        {puedeCrear && " Agrega la primera con Nueva mascota."}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Mascotas">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Mascota</th>
+                <th>Cliente</th>
+                <th>Especie</th>
+                <th>Raza</th>
+                <th>Edad</th>
+                <th>Notas</th>
+                <th class="numero">Citas</th>
+                {puedeEditar && <th class="fija-fin">Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {mascotas.map((m) => (
+                <tr
+                  data-datos={JSON.stringify(m)}
+                  data-buscar={normalizar([m.nombre, m.duenio, especies[m.especie], m.raza].join(" "))}
+                >
+                  <td class="fija-inicio nombre">{m.nombre}</td>
+                  <td>{m.duenio}</td>
+                  <td>{especies[m.especie]}</td>
+                  <td>{m.raza ?? "—"}</td>
+                  <td>
+                    {m.nacimiento ? (
+                      <span title={fecha.format(new Date(`${m.nacimiento}T00:00:00Z`))}>{edad(m.nacimiento)}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td class="secundario notas">{m.notas ?? "—"}</td>
+                  <td class="numero">{numero.format(m.citas)}</td>
+                  {puedeEditar && (
+                    <td class="fija-fin">
+                      <button
+                        type="button"
+                        class="boton-icono"
+                        data-editar
+                        aria-label={`Editar ${m.nombre}`}
+                        title="Editar"
+                      >
+                        <Icono nombre="editar" />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {(puedeCrear || puedeEditar) && <FormMascota clientes={clientes} />}
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import { activarBuscador, enviarConAccion, llenarFormulario } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+
+  const dialogo = document.querySelector<HTMLDialogElement>("#mascota");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar) return;
+    llenarFormulario(form, datos);
+    titulo.textContent = datos?.id ? `Editar ${datos.nombre}` : "Nueva mascota";
+    guardar.textContent = datos?.id ? "Guardar cambios" : "Agregar mascota";
+    dialogo.showModal();
+  };
+
+  // Si se está viendo a un cliente, la nueva mascota ya sale con él elegido
+  document.querySelector<HTMLElement>("[data-nuevo]")?.addEventListener("click", (event) => {
+    const cliente = (event.currentTarget as HTMLElement).dataset.cliente;
+    abrir(cliente ? { cliente_id: cliente } : undefined);
+  });
+  enviarConAccion(dialogo, (datos) => actions.mascotas.guardar(datos));
+
+  tabla?.addEventListener("click", (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("[data-editar]");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (fila?.dataset.datos) abrir(JSON.parse(fila.dataset.datos));
+  });
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .notas {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .filtro {
+    margin: -12px 0 20px;
+
+    a {
+      color: var(--color-accent-texto);
+      font-family: var(--font-bold);
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+  }
+</style>
