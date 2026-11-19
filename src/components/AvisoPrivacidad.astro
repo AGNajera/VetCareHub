@@ -1,0 +1,283 @@
+---
+import Logo from "../assets/logo.svg";
+
+const apartados = [
+  {
+    titulo: "1. Responsable de tus datos",
+    parrafos: [
+      "VetCareHub, clínica veterinaria con domicilio en Av Emiliano Zapata 123, colonia Tlaltenango, Cuernavaca, Morelos, es responsable del uso y la protección de tus datos personales conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).",
+    ],
+  },
+  {
+    titulo: "2. Datos personales que pedimos",
+    parrafos: [
+      "Cuando abres tu cuenta en recepción o agendas una cita en el sistema, guardamos únicamente los datos necesarios para identificarte y atender a tu mascota:",
+    ],
+    lista: [
+      "Datos de contacto: nombre completo, correo electrónico y número de teléfono.",
+      "Datos de tu mascota y sus citas: nombre, especie, servicio solicitado, fecha, hora, motivo de la consulta, cartilla de vacunación e historial clínico.",
+      "Datos de acceso al sistema: contraseña cifrada y registro de sesión para que entres a tu panel de cliente.",
+    ],
+  },
+  {
+    titulo: "3. Para qué usamos tus datos",
+    parrafos: [
+      "Usamos tu información exclusivamente para la operación médica y administrativa de la clínica:",
+    ],
+    lista: [
+      "Darte acceso a tu cuenta en el sistema para agendar, consultar o descargar el comprobante de tus citas.",
+      "Llevar el expediente clínico, las recetas y el calendario de vacunación y desparasitación de tu mascota.",
+      "Enviarte avisos de tus próximas dosis, confirmaciones de cita y reportes diarios con fotos por WhatsApp cuando tu mascota se queda hospitalizada.",
+    ],
+  },
+  {
+    titulo: "4. Con quién los compartimos",
+    parrafos: [
+      "No vendemos, alquilamos ni compartimos tus datos personales con terceros para publicidad ni fines comerciales. Solo los consulta el personal médico y de recepción de VetCareHub encargado de atender a tu mascota.",
+    ],
+  },
+  {
+    titulo: "5. Tus derechos ARCO",
+    parrafos: [
+      "En cualquier momento puedes conocer qué datos tenemos de ti (Acceso), corregirlos si están desactualizados (Rectificación), pedir que los eliminemos cuando cierres tu cuenta (Cancelación) u oponerte a su uso para fines específicos (Oposición).",
+      "Puedes cambiar tu contraseña directamente desde el apartado Mi cuenta dentro del sistema, o solicitar la actualización o eliminación de tus datos en recepción, al teléfono 777 123 4567 o por correo en vetcarehubmx@gmail.com.",
+    ],
+  },
+  {
+    titulo: "6. Cookies y cambios a este aviso",
+    parrafos: [
+      "El sitio utiliza únicamente cookies técnicas de sesión cuando inicias sesión en Acceder al sistema; no usamos cookies de rastreo ni de publicidad.",
+      "Cualquier actualización a este aviso de privacidad se publicará en esta misma página.",
+    ],
+  },
+];
+---
+
+<section class="section encabezado-aviso">
+  <div class="marco">
+    <div class="placa">
+      <div class="marca">
+        <Logo aria-hidden="true" />
+        VetCareHub
+      </div>
+      <div class="resumen">
+        <h1>Aviso de privacidad</h1>
+        <p>
+          Los datos que nos dejas en recepción o en el sistema se usan
+          únicamente para atender a tu mascota, llevar su expediente y
+          mantenerte al tanto de sus citas.
+        </p>
+        <p>
+          Aquí te explicamos qué información guardamos, para qué sirve y cómo
+          puedes revisarla, corregirla o pedir que la borremos cuando quieras.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section detalle-aviso" aria-label="Contenido del aviso de privacidad">
+  <div class="tarjetas">
+    {
+      apartados.map(({ titulo, parrafos, lista }) => (
+        <article class="apartado">
+          <h2>{titulo}</h2>
+          {parrafos.map((texto) => (
+            <p>{texto}</p>
+          ))}
+          {lista && (
+            <ul>
+              {lista.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          )}
+        </article>
+      ))
+    }
+  </div>
+
+  <aside class="contacto-aviso" aria-label="Contacto para dudas de privacidad">
+    <p>
+      <strong>¿Tienes alguna duda sobre tus datos?</strong> Escríbenos a{" "}
+      <a href="mailto:vetcarehubmx@gmail.com">vetcarehubmx@gmail.com</a>, llama
+      al <a href="tel:+527771234567">777 123 4567</a> o acércate a recepción en
+      Av Emiliano Zapata 123, Tlaltenango, Cuernavaca, Morelos.
+    </p>
+  </aside>
+</section>
+
+<style>
+  .encabezado-aviso {
+    padding-block: 32px 16px;
+  }
+
+  .marco {
+    padding: clamp(10px, 2.2vw, 22px);
+    border: var(--border);
+    border-radius: 24px;
+    background-color: var(--color-mint);
+  }
+
+  .placa {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    border: var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: var(--color-white);
+  }
+
+  .marca {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    padding: 32px 44px;
+    border-right: var(--border);
+    font-family: var(--font-bold);
+    font-size: 2.1rem;
+
+    svg {
+      width: 132px;
+      height: 132px;
+    }
+  }
+
+  .resumen {
+    align-self: center;
+    padding: 36px 44px;
+
+    h1 {
+      margin: 0 0 14px;
+      font-family: var(--font-bold);
+      font-size: 2.1rem;
+    }
+
+    p {
+      max-width: 58ch;
+      margin: 0;
+      font-size: 1.15rem;
+      line-height: 1.55;
+    }
+
+    p + p {
+      margin-top: 12px;
+    }
+  }
+
+  .detalle-aviso {
+    padding-block: 16px 56px;
+  }
+
+  /* El fondo marino del contenedor hace los bordes compartidos de 2px entre celdas */
+  .tarjetas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    border: var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: var(--color-primary);
+  }
+
+  .apartado {
+    padding: 28px;
+    background-color: var(--color-white);
+
+    h2 {
+      margin: 0 0 10px;
+      font-family: var(--font-bold);
+      font-size: 1.35rem;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    p + p {
+      margin-top: 10px;
+    }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      line-height: 1.55;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+  }
+
+  .contacto-aviso {
+    margin-top: 20px;
+    padding: 20px 24px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+
+    p {
+      margin: 0;
+      line-height: 1.55;
+    }
+
+    strong {
+      font-family: var(--font-bold);
+    }
+
+    a {
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      text-underline-offset: 3px;
+
+      &:hover {
+        color: var(--color-accent-texto);
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  @media (max-width: 720px) {
+    .placa {
+      grid-template-columns: 1fr;
+    }
+
+    .marca {
+      flex-direction: row;
+      gap: 12px;
+      padding: 18px 20px;
+      border-right: none;
+      border-bottom: var(--border);
+      font-size: 1.8rem;
+
+      svg {
+        width: 60px;
+        height: 60px;
+      }
+    }
+
+    .resumen {
+      padding: 22px 20px 24px;
+
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+
+    .tarjetas {
+      grid-template-columns: 1fr;
+    }
+
+    .apartado {
+      padding: 22px 20px;
+    }
+  }
+</style>

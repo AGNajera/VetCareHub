@@ -12,6 +12,8 @@ const permisos = acciones(user.role, "clientes");
 const puedeVer = permisos.includes("ver");
 const puedeCrear = permisos.includes("crear");
 const puedeEditar = permisos.includes("editar");
+const puedeBorrar = permisos.includes("eliminar");
+const conAcciones = puedeEditar || puedeBorrar;
 
 type Cliente = {
   id: string;
@@ -20,6 +22,7 @@ type Cliente = {
   telefono: string | null;
   alta: Date;
   mascotas: number;
+  citas: number;
   proxima: string | null;
 };
 
@@ -30,6 +33,8 @@ const clientes = puedeVer
       await pool.query<Cliente>(
         `select u.id, u.name as nombre, u.email as correo, u.telefono, u."createdAt" as alta,
                 (select count(*)::int from mascotas m where m.cliente_id = u.id) as mascotas,
+                (select count(*)::int from citas c join mascotas m on m.id = c.mascota_id
+                 where m.cliente_id = u.id) as citas,
                 (select to_char(c.fecha, 'YYYY-MM-DD') || ' ' || to_char(c.hora, 'HH24:MI')
                  from citas c join mascotas m on m.id = c.mascota_id
                  where m.cliente_id = u.id and c.estado in ('pendiente', 'confirmada')
@@ -87,13 +92,20 @@ const fechaCita = (texto: string) => {
                 <th class="numero">Mascotas</th>
                 <th>Próxima cita</th>
                 <th>Alta</th>
-                {puedeEditar && <th class="fija-fin">Acciones</th>}
+                {conAcciones && <th class="fija-fin">Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {clientes.map((c) => (
                 <tr
-                  data-datos={JSON.stringify({ id: c.id, nombre: c.nombre, correo: c.correo, telefono: c.telefono })}
+                  data-datos={JSON.stringify({
+                    id: c.id,
+                    nombre: c.nombre,
+                    correo: c.correo,
+                    telefono: c.telefono,
+                    mascotas: c.mascotas,
+                    citas: c.citas,
+                  })}
                   data-buscar={normalizar([c.nombre, c.correo, c.telefono].join(" "))}
                 >
                   <td class="fija-inicio nombre">{c.nombre}</td>
@@ -113,27 +125,42 @@ const fechaCita = (texto: string) => {
                   </td>
                   <td>{c.proxima ? fechaCita(c.proxima) : <span class="secundario">Sin citas</span>}</td>
                   <td class="secundario">{fecha.format(c.alta)}</td>
-                  {puedeEditar && (
+                  {conAcciones && (
                     <td class="fija-fin">
                       <div class="acciones">
-                        <button
-                          type="button"
-                          class="boton-icono"
-                          data-editar
-                          aria-label={`Editar ${c.nombre}`}
-                          title="Editar"
-                        >
-                          <Icono nombre="editar" />
-                        </button>
-                        <button
-                          type="button"
-                          class="boton-icono"
-                          data-password
-                          aria-label={`Darle otra contraseña a ${c.nombre}`}
-                          title="Nueva contraseña"
-                        >
-                          <Icono nombre="llave" />
-                        </button>
+                        {puedeEditar && (
+                          <>
+                            <button
+                              type="button"
+                              class="boton-icono"
+                              data-editar
+                              aria-label={`Editar ${c.nombre}`}
+                              title="Editar"
+                            >
+                              <Icono nombre="editar" />
+                            </button>
+                            <button
+                              type="button"
+                              class="boton-icono"
+                              data-password
+                              aria-label={`Darle otra contraseña a ${c.nombre}`}
+                              title="Nueva contraseña"
+                            >
+                              <Icono nombre="llave" />
+                            </button>
+                          </>
+                        )}
+                        {puedeBorrar && (
+                          <button
+                            type="button"
+                            class="boton-icono peligro"
+                            data-borrar
+                            aria-label={`Dar de baja a ${c.nombre}`}
+                            title="Dar de baja"
+                          >
+                            <Icono nombre="borrar" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
@@ -231,11 +258,37 @@ const fechaCita = (texto: string) => {
       </dialog>
     )
   }
+
+  {
+    puedeBorrar && (
+      <dialog id="borrar" class="dialogo dialogo-angosto" aria-labelledby="titulo-borrar">
+        <form novalidate>
+          <h2 id="titulo-borrar">Dar de baja al cliente</h2>
+          <input type="hidden" name="id" />
+          <p class="dialogo-texto" />
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton peligro">
+              Dar de baja
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
 </Sistema>
 
 <script>
   import { actions } from "astro:actions";
-  import { activarBuscador, enviarConAccion, mostrarError } from "../../scripts/sistema";
+  import {
+    activarBuscador,
+    enviarConAccion,
+    llenarFormulario,
+    mostrarError,
+  } from "../../scripts/sistema";
 
   const tabla = document.querySelector<HTMLTableElement>("#tabla");
   activarBuscador(document.querySelector("#buscar"), tabla);
@@ -269,12 +322,9 @@ const fechaCita = (texto: string) => {
   const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
   const ayudaNuevo = dialogo?.querySelector<HTMLElement>("[data-ayuda-nuevo]");
 
-  const abrir = (datos?: Record<string, string | null>) => {
+  const abrir = (datos?: Record<string, unknown>) => {
     if (!dialogo || !form || !titulo || !guardar || !ayudaNuevo) return;
-    form.reset();
-    for (const campo of form.querySelectorAll("input")) {
-      campo.value = datos?.[campo.name] ?? "";
-    }
+    llenarFormulario(form, datos);
     titulo.textContent = datos ? `Editar ${datos.nombre}` : "Nuevo cliente";
     guardar.textContent = datos ? "Guardar cambios" : "Registrar cliente";
     ayudaNuevo.hidden = Boolean(datos);
@@ -309,6 +359,10 @@ const fechaCita = (texto: string) => {
     ({ password }) => mostrarPassword(elegido.nombre, elegido.correo, password),
   );
 
+  // Dar de baja pide confirmación y avisa si también se borrarán sus citas
+  const borrar = document.querySelector<HTMLDialogElement>("#borrar");
+  enviarConAccion(borrar, (datos) => actions.clientes.borrar({ id: String(datos.get("id")) }));
+
   tabla?.addEventListener("click", (event) => {
     const boton = (event.target as Element).closest<HTMLButtonElement>("button");
     const fila = boton?.closest<HTMLTableRowElement>("tr");
@@ -323,6 +377,21 @@ const fechaCita = (texto: string) => {
       confirmar.querySelector(".dialogo-texto")!.textContent =
         `Se le dará a ${datos.nombre} una contraseña nueva y se cerrará su sesión. La que tiene ahora dejará de servir.`;
       confirmar.showModal();
+    }
+
+    if (boton.hasAttribute("data-borrar") && borrar) {
+      borrar.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      const partes: string[] = [];
+      if (datos.mascotas > 0) {
+        partes.push(`${datos.mascotas} ${datos.mascotas === 1 ? "mascota" : "mascotas"}`);
+      }
+      if (datos.citas > 0) {
+        partes.push(`${datos.citas} ${datos.citas === 1 ? "cita" : "citas"}`);
+      }
+      borrar.querySelector(".dialogo-texto")!.textContent = partes.length
+        ? `Se dará de baja la cuenta de ${datos.nombre} y se borrarán sus ${partes.join(" y ")}.`
+        : `Se dará de baja la cuenta de ${datos.nombre}. No tiene mascotas ni citas registradas.`;
+      borrar.showModal();
     }
   });
 </script>

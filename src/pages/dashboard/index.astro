@@ -1,9 +1,10 @@
 ---
 import Sistema from "../../layouts/Sistema.astro";
+import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { servicios, type Servicio } from "../../lib/citas";
-import { fecha, numero } from "../../lib/formato";
+import { preciosServicio, servicios, type Servicio } from "../../lib/citas";
+import { fecha, numero, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -90,6 +91,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 ---
 
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
+  <BienvenidaMascota
+    titulo="¡Buen día en la clínica!"
+    texto="Aquí tienes el resumen de hoy: revisa las próximas citas, las cuentas de los clientes y las existencias del inventario."
+  />
+
   <ul class="tarjetas">
     {
       tarjetas.map(({ titulo, valor, nota, icono, href }) => {
@@ -125,6 +131,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                 <th>Mascota</th>
                 <th>Cliente</th>
                 <th>Servicio</th>
+                <th class="numero">Precio</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -138,6 +145,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                   <td class="nombre">{c.mascota}</td>
                   <td>{c.cliente}</td>
                   <td>{servicios[c.servicio]}</td>
+                  <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                   <td>
                     <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>
                       {c.estado === "pendiente" ? "Pendiente" : "Confirmada"}

@@ -3,8 +3,14 @@ import Sistema from "../../layouts/Sistema.astro";
 import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
-import { estados, servicios, type Estado, type Servicio } from "../../lib/citas";
-import { fecha } from "../../lib/formato";
+import {
+  estados,
+  preciosServicio,
+  servicios,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -42,7 +48,6 @@ const [{ rows: citas }, { rows: mascotas }] = await Promise.all([
   ),
 ]);
 
-const conEditables = citas.some((c) => c.editable);
 const claseEstado = (estado: Estado) =>
   estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
 ---
@@ -77,9 +82,10 @@ const claseEstado = (estado: Estado) =>
               <th class="fija-inicio">Fecha y hora</th>
               <th>Mascota</th>
               <th>Servicio</th>
+              <th class="numero">Precio</th>
               <th>Motivo</th>
               <th>Estado</th>
-              {conEditables && <th class="fija-fin">Acciones</th>}
+              <th class="fija-fin">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -97,14 +103,24 @@ const claseEstado = (estado: Estado) =>
                 </td>
                 <td class="nombre">{c.mascota}</td>
                 <td>{servicios[c.servicio]}</td>
+                <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                 <td class="secundario motivo">{c.motivo ?? "—"}</td>
                 <td>
                   <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
                 </td>
-                {conEditables && (
-                  <td class="fija-fin">
+                <td class="fija-fin">
+                  <div class="acciones">
+                    <a
+                      class="boton-icono"
+                      href={`/api/citas/${c.id}.pdf`}
+                      download
+                      aria-label={`Descargar cita de ${c.mascota} en PDF`}
+                      title="Descargar PDF"
+                    >
+                      <Icono nombre="descargar" />
+                    </a>
                     {c.editable && (
-                      <div class="acciones">
+                      <>
                         <button
                           type="button"
                           class="boton-icono"
@@ -123,10 +139,10 @@ const claseEstado = (estado: Estado) =>
                         >
                           <Icono nombre="cancelar" />
                         </button>
-                      </div>
+                      </>
                     )}
-                  </td>
-                )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -1,9 +1,16 @@
 ---
 import Sistema from "../../layouts/Sistema.astro";
+import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { estados, servicios, type Estado, type Servicio } from "../../lib/citas";
-import { fecha, numero } from "../../lib/formato";
+import {
+  estados,
+  preciosServicio,
+  servicios,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, numero, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -57,6 +64,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
 ---
 
 <Sistema titulo="Inicio" encabezado={`Hola, ${user.name.split(" ")[0]}`}>
+  <BienvenidaMascota
+    titulo="¡Qué gusto verte por aquí!"
+    texto="Desde tu panel puedes consultar tus próximas citas, agendar una nueva visita para tu mascota o descargar su comprobante."
+  />
+
   <ul class="tarjetas">
     {
       tarjetas.map(({ titulo, valor, nota, icono, href }) => (
@@ -103,6 +115,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                 <th>Fecha y hora</th>
                 <th>Mascota</th>
                 <th>Servicio</th>
+                <th class="numero">Precio</th>
                 <th>Estado</th>
               </tr>
             </thead>
@@ -115,6 +128,7 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
                   </td>
                   <td class="nombre">{c.mascota}</td>
                   <td>{servicios[c.servicio]}</td>
+                  <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                   <td>
                     <span class:list={["etiqueta", { alerta: c.estado === "pendiente" }]}>
                       {estados[c.estado]}

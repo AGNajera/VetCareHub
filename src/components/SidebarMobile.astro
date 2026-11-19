@@ -4,12 +4,16 @@ import AccesoSistema from "./AccesoSistema.astro";
 
 const { estatica } = Astro.props;
 
-// Inicio y Nosotros son páginas; el sistema va justo después (ver Header.astro) y los
-// demás van al footer, que está en las dos.
-// Las rutas llevan / al principio para que también funcionen desde /nosotros
-const enlaces = [
+// Inicio, Nosotros y Aviso de privacidad son páginas; el sistema va justo después
+// (ver Header.astro) y los demás van al footer, que está en todas.
+// Las rutas llevan / al principio para que también funcionen fuera de /
+const paginas = [
   { href: "/#inicio", texto: "Inicio", ruta: "/" },
   { href: "/nosotros", texto: "Nosotros", ruta: "/nosotros" },
+  { href: "/privacidad", texto: "Aviso de privacidad", ruta: "/privacidad" },
+];
+
+const anclas = [
   { href: "#contacto", texto: "Contacto" },
   { href: "#contacto", texto: "Cita" },
   { href: "#contacto", texto: "Ayuda" },
@@ -23,7 +27,7 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
 <aside id="sidebar-mobile" class="sidebar" aria-label="Menú" inert>
   <nav>
     {
-      enlaces.slice(0, 2).map(({ href, texto, ruta }) => (
+      paginas.map(({ href, texto, ruta }) => (
         <a href={href} aria-current={ruta === actual ? "page" : undefined}>
           {texto}
         </a>
@@ -41,7 +45,7 @@ const actual = Astro.url.pathname.replace(/\/$/, "") || "/";
       )
     }
     {
-      enlaces.slice(2).map(({ href, texto }) => <a href={href}>{texto}</a>)
+      anclas.map(({ href, texto }) => <a href={href}>{texto}</a>)
     }
   </nav>
 

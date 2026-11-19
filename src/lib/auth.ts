@@ -32,6 +32,8 @@ export const auth = betterAuth({
       puesto: { type: "string", required: false, input: false },
       // Solo los clientes; la columna la agrega db/migraciones/004-...
       telefono: { type: "string", required: false, input: false },
+      // Fecha en que el cliente aceptó los términos al entrar por primera vez (005-...)
+      terminos_aceptados_en: { type: "date", required: false, input: false },
     },
   },
 

@@ -4,8 +4,16 @@ import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
 import { acciones } from "../../lib/permisos";
-import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
-import { fecha, normalizar } from "../../lib/formato";
+import {
+  especies,
+  estados,
+  preciosServicio,
+  servicios,
+  type Especie,
+  type Estado,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, normalizar, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -109,9 +117,10 @@ const claseEstado = (estado: Estado) =>
                 <th>Cliente</th>
                 <th>Teléfono</th>
                 <th>Servicio</th>
+                <th class="numero">Precio</th>
                 <th>Motivo</th>
                 <th>Estado</th>
-                {puedeEditar && <th class="fija-fin">Acciones</th>}
+                <th class="fija-fin">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -120,7 +129,15 @@ const claseEstado = (estado: Estado) =>
                   class:list={[{ cancelada: c.estado === "cancelada" }]}
                   data-datos={JSON.stringify(c)}
                   data-buscar={normalizar(
-                    [c.mascota, c.cliente, servicios[c.servicio], estados[c.estado], c.motivo, c.fecha].join(" "),
+                    [
+                      c.mascota,
+                      c.cliente,
+                      servicios[c.servicio],
+                      pesos.format(preciosServicio[c.servicio]),
+                      estados[c.estado],
+                      c.motivo,
+                      c.fecha,
+                    ].join(" "),
                   )}
                 >
                   <td class="fija-inicio fecha">
@@ -138,23 +155,35 @@ const claseEstado = (estado: Estado) =>
                     {c.telefono ? <a href={`tel:${c.telefono.replace(/\s/g, "")}`}>{c.telefono}</a> : "—"}
                   </td>
                   <td>{servicios[c.servicio]}</td>
+                  <td class="numero">{pesos.format(preciosServicio[c.servicio])}</td>
                   <td class="secundario motivo">{c.motivo ?? "—"}</td>
                   <td>
                     <span class:list={["etiqueta", claseEstado(c.estado)]}>{estados[c.estado]}</span>
                   </td>
-                  {puedeEditar && (
-                    <td class="fija-fin">
-                      <button
-                        type="button"
+                  <td class="fija-fin">
+                    <div class="acciones">
+                      <a
                         class="boton-icono"
-                        data-editar
-                        aria-label={`Editar cita de ${c.mascota}`}
-                        title="Editar"
+                        href={`/api/citas/${c.id}.pdf`}
+                        download
+                        aria-label={`Descargar cita de ${c.mascota} en PDF`}
+                        title="Descargar PDF"
                       >
-                        <Icono nombre="editar" />
-                      </button>
-                    </td>
-                  )}
+                        <Icono nombre="descargar" />
+                      </a>
+                      {puedeEditar && (
+                        <button
+                          type="button"
+                          class="boton-icono"
+                          data-editar
+                          aria-label={`Editar cita de ${c.mascota}`}
+                          title="Editar"
+                        >
+                          <Icono nombre="editar" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -220,7 +249,12 @@ const claseEstado = (estado: Estado) =>
     text-overflow: ellipsis;
   }
 
-  td a,
+  .acciones {
+    display: flex;
+    gap: 6px;
+  }
+
+  td a:not(.boton-icono),
   .vacio a {
     color: inherit;
     text-underline-offset: 3px;

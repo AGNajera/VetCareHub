@@ -1,0 +1,36 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import AvisoPrivacidad from "../components/AvisoPrivacidad.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout
+  titulo="Aviso de privacidad"
+  descripcion="Aviso de privacidad de VetCareHub: qué datos personales pedimos en la clínica y en el sistema, para qué los usamos y cómo ejercer tus derechos ARCO."
+>
+  <div class="page">
+    <Header />
+    <main id="contenido">
+      <AvisoPrivacidad />
+    </main>
+    <Footer />
+  </div>
+</Layout>
+
+<style>
+  .page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+
+    font-family: var(--font-body);
+  }
+
+  main {
+    width: 100%;
+  }
+</style>
