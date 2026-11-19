@@ -181,7 +181,7 @@ export const server = {
           }
         } catch (error) {
           // 23505: ya hay otro proveedor con ese nombre (la columna es unique)
-          if ((error as { code?: string }).code === "23505") {
+          if (esRepetido(error)) {
             throw new ActionError({
               code: "CONFLICT",
               message: `Ya hay un proveedor que se llama ${p.nombre}.`,
@@ -367,6 +367,9 @@ export const server = {
             [c.mascota_id, cliente],
           );
           if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Elige una de tus mascotas." });
+        } else {
+          const { rowCount } = await pool.query("select 1 from mascotas where id = $1", [c.mascota_id]);
+          if (!rowCount) throw new ActionError({ code: "BAD_REQUEST", message: "Esa mascota ya no existe." });
         }
 
         const estado = cliente ? "pendiente" : (c.estado ?? "pendiente");

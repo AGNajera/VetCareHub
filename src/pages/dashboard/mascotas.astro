@@ -5,7 +5,7 @@ import FormMascota from "../../components/sistema/FormMascota.astro";
 import { pool } from "../../lib/db";
 import { acciones } from "../../lib/permisos";
 import { especies, type Especie } from "../../lib/citas";
-import { fecha, normalizar, numero } from "../../lib/formato";
+import { edad, fecha, normalizar, numero } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -29,7 +29,7 @@ type Mascota = {
 };
 
 // Desde la tabla de clientes se llega con ?cliente=<id> para ver solo las suyas
-const filtro = Astro.url.searchParams.get("cliente");
+const filtro = Astro.url.searchParams.get("cliente") || null;
 
 const [mascotas, clientes] = puedeVer
   ? await Promise.all([
@@ -56,13 +56,6 @@ const [mascotas, clientes] = puedeVer
   : [[], []];
 
 const deFiltro = filtro ? (clientes.find(({ id }) => id === filtro)?.nombre ?? mascotas[0]?.duenio) : null;
-
-const edad = (nacimiento: string) => {
-  const meses = Math.floor((Date.now() - new Date(`${nacimiento}T00:00:00Z`).getTime()) / (30.44 * 864e5));
-  if (meses < 12) return `${meses} ${meses === 1 ? "mes" : "meses"}`;
-  const anios = Math.floor(meses / 12);
-  return `${anios} ${anios === 1 ? "año" : "años"}`;
-};
 ---
 
 <Sistema titulo="Mascotas" encabezado={deFiltro ? `Mascotas de ${deFiltro}` : "Mascotas"}>

@@ -4,7 +4,7 @@ import Icono from "../../components/sistema/Icono.astro";
 import FormMascota from "../../components/sistema/FormMascota.astro";
 import { pool } from "../../lib/db";
 import { especies, type Especie } from "../../lib/citas";
-import { fecha, numero } from "../../lib/formato";
+import { edad, fecha, numero } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -28,13 +28,6 @@ const { rows: mascotas } = await pool.query<Mascota>(
    order by m.nombre`,
   [user.id],
 );
-
-const edad = (nacimiento: string) => {
-  const meses = Math.floor((Date.now() - new Date(`${nacimiento}T00:00:00Z`).getTime()) / (30.44 * 864e5));
-  if (meses < 12) return `${meses} ${meses === 1 ? "mes" : "meses"}`;
-  const anios = Math.floor(meses / 12);
-  return `${anios} ${anios === 1 ? "año" : "años"}`;
-};
 ---
 
 <Sistema titulo="Mis mascotas">

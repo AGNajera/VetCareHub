@@ -2,14 +2,14 @@
 import Sistema from "../../layouts/Sistema.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
-import { especies, estados, servicios, type Especie, type Estado, type Servicio } from "../../lib/citas";
+import { estados, servicios, type Estado, type Servicio } from "../../lib/citas";
 import { fecha, numero } from "../../lib/formato";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
 
-type Mascota = { id: string; nombre: string; especie: Especie; raza: string | null };
+type Mascota = { nombre: string };
 type Cita = {
   id: string;
   mascota: string;
@@ -20,10 +20,7 @@ type Cita = {
 };
 
 const [{ rows: mascotas }, { rows: proximas }] = await Promise.all([
-  pool.query<Mascota>(
-    "select id, nombre, especie, raza from mascotas where cliente_id = $1 order by nombre",
-    [user.id],
-  ),
+  pool.query<Mascota>("select nombre from mascotas where cliente_id = $1 order by nombre", [user.id]),
   pool.query<Cita>(
     `select c.id, m.nombre as mascota, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
             to_char(c.hora, 'HH24:MI') as hora, c.servicio, c.estado
