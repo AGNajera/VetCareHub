@@ -3,8 +3,13 @@ import Sistema from "../../layouts/Sistema.astro";
 import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
 import {
+  ahoraEnClinica,
+  calcularPuntosVisitas,
   estados,
+  MESES_CADUCIDAD_PUNTOS,
+  nivelDePuntos,
   preciosServicio,
   servicios,
   type Estado,
@@ -15,6 +20,9 @@ import { fecha, numero, pesos } from "../../lib/formato";
 export const prerender = false;
 
 const user = Astro.locals.user!;
+const hoy = ahoraEnClinica().fecha;
+
+await aplicarCorteDeCierre19h();
 
 type Mascota = { nombre: string };
 type Cita = {
@@ -26,7 +34,7 @@ type Cita = {
   estado: Estado;
 };
 
-const [{ rows: mascotas }, { rows: proximas }] = await Promise.all([
+const [{ rows: mascotas }, { rows: proximas }, { rows: completadas }] = await Promise.all([
   pool.query<Mascota>("select nombre from mascotas where cliente_id = $1 order by nombre", [user.id]),
   pool.query<Cita>(
     `select c.id, m.nombre as mascota, to_char(c.fecha, 'YYYY-MM-DD') as fecha,
@@ -39,9 +47,22 @@ const [{ rows: mascotas }, { rows: proximas }] = await Promise.all([
      order by c.fecha, c.hora`,
     [user.id],
   ),
+  pool.query<{ fecha: string; servicio: Servicio }>(
+    `select to_char(c.fecha, 'YYYY-MM-DD') as fecha, c.servicio
+     from citas c
+     join mascotas m on m.id = c.mascota_id
+     where m.cliente_id = $1 and c.estado = 'completada'`,
+    [user.id],
+  ),
 ]);
 
 const primera = proximas[0];
+const resumenPuntos = calcularPuntosVisitas(
+  completadas.map((c) => ({ ...c, estado: "completada" as const })),
+  hoy,
+);
+const puntos = resumenPuntos.vigentes;
+const nivel = nivelDePuntos(puntos);
 
 const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href: string }[] = [
   {
@@ -59,6 +80,15 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     nota: mascotas.length ? mascotas.map((m) => m.nombre).join(", ") : "Registra la primera",
     icono: "mascotas",
     href: "/cliente/mascotas",
+  },
+  {
+    titulo: "Mi carnet y puntos",
+    valor: `${numero.format(puntos)} pts`,
+    nota: resumenPuntos.proximoVencimiento
+      ? `${nivel.nombre} · Caducan ${fecha.format(new Date(`${resumenPuntos.proximoVencimiento.fecha}T00:00:00Z`))}`
+      : `${nivel.nombre} · Vigencia ${MESES_CADUCIDAD_PUNTOS} meses`,
+    icono: "carnet",
+    href: "/cliente/historial",
   },
 ];
 ---

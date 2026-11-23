@@ -1,0 +1,822 @@
+---
+// Carnet clínico y de fidelidad por cliente. Lo comparten /cliente/historial (para que cada
+// cliente consulte y descargue el suyo) y /dashboard/historial (para que el personal revise
+// y descargue el carnet de cualquier cliente)
+import Logo from "../../assets/logo.svg";
+import Icono from "./Icono.astro";
+import {
+  ahoraEnClinica,
+  calcularPuntosVisitas,
+  especies,
+  estados,
+  fechaCaducidadPuntos,
+  MESES_CADUCIDAD_PUNTOS,
+  nivelDePuntos,
+  nivelesCarnet,
+  preciosServicio,
+  puntosServicio,
+  puntosVigentesEn,
+  servicios,
+  type Estado,
+} from "../../lib/citas";
+import { edad, fecha, numero, pesos } from "../../lib/formato";
+import type { DatosCarnet } from "../../lib/pdf-carnet";
+
+type Props = {
+  carnet: DatosCarnet;
+  esClienteVista?: boolean;
+};
+
+const { carnet, esClienteVista = false } = Astro.props;
+const folio = carnet.id.slice(0, 8).toUpperCase();
+const hoy = ahoraEnClinica().fecha;
+
+const completadas = carnet.visitas.filter((v) => v.estado === "completada");
+const resumenPuntos = calcularPuntosVisitas(carnet.visitas, hoy);
+const puntosTotales = resumenPuntos.vigentes;
+const puntosEnCurso = resumenPuntos.enCurso;
+
+const nivel = nivelDePuntos(puntosTotales);
+
+const claseEstado = (estado: Estado) =>
+  estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
+---
+
+<article class="carnet" aria-labelledby="carnet-titular">
+  <header class="carnet-encabezado">
+    <div class="carnet-marca">
+      <div class="logo-marco" aria-hidden="true">
+        <Logo class="carnet-logo" />
+      </div>
+      <div class="marca-textos">
+        <span class="clinica" translate="no">VetCareHub</span>
+        <p class="subtitulo">Carnet clínico y programa de puntos · Cuernavaca, Morelos</p>
+      </div>
+    </div>
+
+    <div class="carnet-acciones">
+      <span class="folio" translate="no">Folio #VCH-{folio}</span>
+      <a
+        class="boton principal boton-pdf"
+        href={`/api/carnet/${carnet.id}.pdf`}
+        download
+      >
+        <Icono nombre="descargar" />
+        Descargar carnet en PDF
+      </a>
+    </div>
+  </header>
+
+  <div class="carnet-cuerpo">
+    <div class="resumen-grid">
+      <section class="panel-titular" aria-labelledby="carnet-titular">
+        <p class="panel-etiqueta">Titular del carnet</p>
+        <h2 id="carnet-titular" class="titular-nombre">{carnet.nombre}</h2>
+        <dl class="titular-datos">
+          <div>
+            <dt>Correo</dt>
+            <dd translate="no">{carnet.correo}</dd>
+          </div>
+          <div>
+            <dt>Teléfono</dt>
+            <dd>{carnet.telefono ?? "No registrado"}</dd>
+          </div>
+          <div>
+            <dt>Cliente desde</dt>
+            <dd>{fecha.format(new Date(carnet.alta))}</dd>
+          </div>
+          <div>
+            <dt>Visitas completadas</dt>
+            <dd class="tabular">
+              {numero.format(completadas.length)}{" "}
+              {completadas.length === 1 ? "visita" : "visitas"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel-puntos" aria-labelledby="titulo-puntos">
+        <div class="puntos-cabecera">
+          <div>
+            <p class="panel-etiqueta">
+              Puntos vigentes (10% por visita · vigencia de {MESES_CADUCIDAD_PUNTOS} meses)
+            </p>
+            <h3 id="titulo-puntos" class="puntos-total tabular">
+              <Icono nombre="puntos" />
+              <span>{numero.format(puntosTotales)}</span>
+              <small>pts</small>
+            </h3>
+          </div>
+          <span class="insignia-nivel">{nivel.nombre}</span>
+        </div>
+
+        <p class="beneficio-activo">{nivel.beneficio}</p>
+
+        <div class="aviso-caducidad">
+          <Icono nombre="reloj" />
+          <p class="tabular">
+            <strong>Caducidad de {MESES_CADUCIDAD_PUNTOS} meses:</strong> los puntos de cada visita
+            completada están vigentes durante {MESES_CADUCIDAD_PUNTOS} meses a partir de la fecha
+            de la cita.
+            {
+              resumenPuntos.proximoVencimiento && (
+                <>
+                  {" "}
+                  Próximo vencimiento:{" "}
+                  <strong>
+                    {numero.format(resumenPuntos.proximoVencimiento.puntos)} pts
+                  </strong>{" "}
+                  caducan el{" "}
+                  <strong>
+                    {fecha.format(
+                      new Date(`${resumenPuntos.proximoVencimiento.fecha}T00:00:00Z`),
+                    )}
+                  </strong>
+                  .
+                </>
+              )
+            }
+            {
+              resumenPuntos.vencidos > 0 && (
+                <>
+                  {" "}
+                  ({numero.format(resumenPuntos.vencidos)} pts anteriores ya cumplieron sus{" "}
+                  {MESES_CADUCIDAD_PUNTOS} meses).
+                </>
+              )
+            }
+          </p>
+        </div>
+
+        <div class="barra-contenedor">
+          <div
+            class="barra-progreso"
+            role="progressbar"
+            aria-label="Avance hacia el siguiente nivel del carnet"
+            aria-valuenow={nivel.progreso}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div class="barra-relleno" style={`width: ${nivel.progreso}%`}></div>
+          </div>
+          <p class="barra-nota tabular">
+            {
+              nivel.siguiente ? (
+                <>
+                  Te faltan <strong>{numero.format(nivel.faltan)} pts</strong> para alcanzar{" "}
+                  <strong>{numero.format(nivel.siguiente)} pts</strong>.
+                </>
+              ) : (
+                <strong>Has alcanzado el nivel más alto del carnet VetCareHub.</strong>
+              )
+            }
+            {
+              puntosEnCurso > 0 && (
+                <span>
+                  {" "}
+                  · Tienes +{numero.format(puntosEnCurso)} pts por sumar en tus próximas citas.
+                </span>
+              )
+            }
+          </p>
+        </div>
+
+        <ul class="escala-niveles" aria-label="Niveles del programa de puntos">
+          {
+            nivelesCarnet.map((n) => {
+              const activo = n.clave === nivel.clave;
+              const alcanzado = puntosTotales >= n.minimo;
+              return (
+                <li class:list={["escalon", { activo, alcanzado }]}>
+                  <span class="escalon-nombre">{n.nombre}</span>
+                  <span class="escalon-pts tabular">{numero.format(n.minimo)}+ pts</span>
+                </li>
+              );
+            })
+          }
+        </ul>
+      </section>
+    </div>
+
+    <section class="carnet-seccion" aria-labelledby="titulo-mascotas-carnet">
+      <div class="seccion-cabecera">
+        <h3 id="titulo-mascotas-carnet">
+          Mascotas en este carnet ({numero.format(carnet.mascotas.length)})
+        </h3>
+        {
+          esClienteVista ? (
+            <a href="/cliente/mascotas">Administrar mis mascotas</a>
+          ) : (
+            <a href={`/dashboard/mascotas?cliente=${carnet.id}`}>Ver en Mascotas</a>
+          )
+        }
+      </div>
+
+      {
+        carnet.mascotas.length === 0 ? (
+          <p class="vacio-carnet">
+            Todavía no hay mascotas registradas en este carnet.
+          </p>
+        ) : (
+          <ul class="mascotas-grid">
+            {carnet.mascotas.map((m) => {
+              const visitasMascota = completadas.filter((v) => v.mascota_id === m.id);
+              const puntosMascota = visitasMascota
+                .filter((v) => puntosVigentesEn(v.fecha, hoy))
+                .reduce((acc, v) => acc + puntosServicio[v.servicio], 0);
+              const ultimaVisita = visitasMascota[0];
+              return (
+                <li class="ficha-mascota">
+                  <div class="ficha-arriba">
+                    <span class="icono-mascota" aria-hidden="true">
+                      <Icono nombre="mascotas" />
+                    </span>
+                    <div class="ficha-identidad">
+                      <h4>{m.nombre}</h4>
+                      <p>
+                        {especies[m.especie]}
+                        {m.raza ? ` · ${m.raza}` : ""}
+                        {m.nacimiento ? ` · ${edad(m.nacimiento)}` : ""}
+                      </p>
+                    </div>
+                    <span class="sello-mascota tabular">+{numero.format(puntosMascota)} pts</span>
+                  </div>
+                  {m.notas && <p class="ficha-notas">Notas: {m.notas}</p>}
+                  <p class="ficha-pie tabular">
+                    <span>
+                      {numero.format(visitasMascota.length)}{" "}
+                      {visitasMascota.length === 1 ? "visita completada" : "visitas completadas"}
+                    </span>
+                    {ultimaVisita && (
+                      <span>
+                        Última: {fecha.format(new Date(`${ultimaVisita.fecha}T00:00:00Z`))}
+                      </span>
+                    )}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
+    </section>
+
+    <section class="carnet-seccion" aria-labelledby="titulo-visitas-carnet">
+      <div class="seccion-cabecera">
+        <h3 id="titulo-visitas-carnet">
+          Historial de visitas y puntos por cita ({numero.format(carnet.visitas.length)})
+        </h3>
+        {
+          esClienteVista ? (
+            <a href="/cliente/citas">Agendar nueva cita</a>
+          ) : (
+            <a href="/dashboard/citas">Ir a Citas</a>
+          )
+        }
+      </div>
+
+      {
+        carnet.visitas.length === 0 ? (
+          <p class="vacio-carnet">
+            Todavía no hay citas registradas. Cada visita completada suma en automático el 10% de
+            su valor en puntos con una vigencia de {MESES_CADUCIDAD_PUNTOS} meses.
+          </p>
+        ) : (
+          <div class="marco-tabla" tabindex="0" role="region" aria-label="Historial de visitas del carnet">
+            <table>
+              <thead>
+                <tr>
+                  <th class="fija-inicio">Fecha y hora</th>
+                  <th>Mascota</th>
+                  <th>Servicio</th>
+                  <th class="numero">Costo</th>
+                  <th>Estado</th>
+                  <th class="numero">Puntos y caducidad ({MESES_CADUCIDAD_PUNTOS} meses)</th>
+                  <th class="fija-fin">Recibo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {carnet.visitas.map((v) => {
+                  const pts = puntosServicio[v.servicio];
+                  const fechaCaduca = fechaCaducidadPuntos(v.fecha);
+                  const vigentes = puntosVigentesEn(v.fecha, hoy);
+                  return (
+                    <tr class:list={{ cancelada: v.estado === "cancelada" }}>
+                      <td class="fija-inicio tabular">
+                        <span>{fecha.format(new Date(`${v.fecha}T00:00:00Z`))}</span>
+                        <strong class="hora">{v.hora}</strong>
+                      </td>
+                      <td>
+                        <strong class="nombre">{v.mascota}</strong>
+                        <span class="secundario"> · {especies[v.especie]}</span>
+                      </td>
+                      <td>
+                        <div>{servicios[v.servicio]}</div>
+                        {v.motivo && <div class="secundario motivo">{v.motivo}</div>}
+                      </td>
+                      <td class="numero">{pesos.format(preciosServicio[v.servicio])}</td>
+                      <td>
+                        <span class:list={["etiqueta", claseEstado(v.estado)]}>
+                          {estados[v.estado]}
+                        </span>
+                      </td>
+                      <td class="numero">
+                        {v.estado === "completada" ? (
+                          <div class="celda-puntos">
+                            <span class:list={["sello-puntos", { vencido: !vigentes }]}>
+                              +{numero.format(pts)} pts{!vigentes ? " (caducados)" : ""}
+                            </span>
+                            <span class="caducidad-cita">
+                              {vigentes
+                                ? `Caducan el ${fecha.format(new Date(`${fechaCaduca}T00:00:00Z`))}`
+                                : `Caducaron el ${fecha.format(new Date(`${fechaCaduca}T00:00:00Z`))}`}
+                            </span>
+                          </div>
+                        ) : v.estado === "cancelada" ? (
+                          <span class="secundario">0 pts</span>
+                        ) : (
+                          <div class="celda-puntos">
+                            <span class="secundario">+{numero.format(pts)} al completar</span>
+                            <span class="caducidad-cita">Vigencia de {MESES_CADUCIDAD_PUNTOS} meses</span>
+                          </div>
+                        )}
+                      </td>
+                      <td class="fija-fin">
+                        <a
+                          class="boton-icono"
+                          href={`/api/citas/${v.id}.pdf`}
+                          download
+                          aria-label={`Descargar comprobante de cita de ${v.mascota} en PDF`}
+                          title="Descargar comprobante en PDF"
+                        >
+                          <Icono nombre="descargar" />
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+    </section>
+  </div>
+</article>
+
+<style>
+  .carnet {
+    border: var(--border);
+    border-radius: 16px;
+    background-color: var(--color-surface);
+    overflow: hidden;
+  }
+
+  .carnet-encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 24px;
+    padding: 20px 24px;
+    border-bottom: 2px dashed color-mix(in oklch, var(--color-primary) 28%, transparent);
+    background-color: var(--color-mint);
+  }
+
+  .carnet-marca {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-marco {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: var(--border);
+    border-radius: 12px;
+    background-color: var(--color-white);
+  }
+
+  .carnet-logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .marca-textos {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .clinica {
+    font-family: var(--font-bold);
+    font-size: 1.45rem;
+    line-height: 1.1;
+  }
+
+  .subtitulo {
+    margin: 0;
+    color: var(--color-accent-texto);
+    font-size: 0.98rem;
+  }
+
+  .carnet-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .folio {
+    padding: 6px 12px;
+    border: var(--border);
+    border-radius: 999px;
+    background-color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .boton-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+
+  .carnet-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 24px;
+  }
+
+  .resumen-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 20px;
+  }
+
+  @media (max-width: 920px) {
+    .resumen-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel-titular,
+  .panel-puntos {
+    padding: 20px 22px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-white);
+  }
+
+  .panel-etiqueta {
+    margin: 0 0 6px;
+    color: var(--color-accent-texto);
+    font-family: var(--font-bold);
+    font-size: 0.95rem;
+  }
+
+  .titular-nombre {
+    margin: 0 0 16px;
+    font-family: var(--font-bold);
+    font-size: 1.55rem;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .titular-datos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+    margin: 0;
+
+    dt {
+      color: color-mix(in oklch, var(--color-primary) 70%, white);
+      font-size: 0.92rem;
+    }
+
+    dd {
+      margin: 2px 0 0;
+      font-family: var(--font-bold);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .puntos-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .puntos-total {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--font-bold);
+    font-size: 2.2rem;
+    line-height: 1.1;
+
+    :global(.icono) {
+      align-self: center;
+      width: 28px;
+      height: 28px;
+      color: var(--color-accent);
+    }
+
+    small {
+      font-size: 1.1rem;
+    }
+  }
+
+  .insignia-nivel {
+    padding: 6px 14px;
+    border: var(--border);
+    border-radius: 999px;
+    background-color: var(--color-mint);
+    font-family: var(--font-bold);
+    font-size: 0.98rem;
+  }
+
+  .beneficio-activo {
+    margin: 12px 0 12px;
+    line-height: 1.45;
+  }
+
+  .aviso-caducidad {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 11px 14px;
+    border: 1.5px solid color-mix(in oklch, var(--color-primary) 25%, transparent);
+    border-radius: 10px;
+    background-color: var(--color-surface);
+    font-size: 0.93rem;
+    line-height: 1.45;
+
+    :global(.icono) {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      margin-top: 1px;
+      color: var(--color-accent-texto);
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .celda-puntos {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+  }
+
+  .caducidad-cita {
+    color: color-mix(in oklch, var(--color-primary) 68%, white);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sello-puntos.vencido {
+    border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+    background-color: var(--color-surface);
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
+    text-decoration: line-through;
+  }
+
+  .barra-contenedor {
+    margin-bottom: 16px;
+  }
+
+  .barra-progreso {
+    width: 100%;
+    height: 12px;
+    border: 2px solid var(--color-primary);
+    border-radius: 999px;
+    background-color: var(--color-surface);
+    overflow: hidden;
+  }
+
+  .barra-relleno {
+    height: 100%;
+    background-color: var(--color-accent);
+    transition: width 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .barra-relleno {
+      transition: none;
+    }
+  }
+
+  .barra-nota {
+    margin: 8px 0 0;
+    font-size: 0.94rem;
+    line-height: 1.4;
+  }
+
+  .escala-niveles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (max-width: 560px) {
+    .escala-niveles {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .escalon {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1.5px solid color-mix(in oklch, var(--color-primary) 22%, transparent);
+    border-radius: 10px;
+    background-color: var(--color-surface);
+    font-size: 0.88rem;
+
+    &.alcanzado {
+      border-color: var(--color-primary);
+      background-color: var(--color-white);
+    }
+
+    &.activo {
+      border: var(--border);
+      background-color: var(--color-mint);
+    }
+  }
+
+  .escalon-nombre {
+    font-family: var(--font-bold);
+  }
+
+  .escalon-pts {
+    color: var(--color-accent-texto);
+  }
+
+  .carnet-seccion {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .seccion-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+
+    h3 {
+      margin: 0;
+      font-family: var(--font-bold);
+      font-size: 1.25rem;
+    }
+
+    a {
+      color: var(--color-accent-texto);
+      font-family: var(--font-bold);
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 3px;
+      }
+    }
+  }
+
+  .mascotas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ficha-mascota {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 18px;
+    border: var(--border);
+    border-radius: 12px;
+    background-color: var(--color-white);
+  }
+
+  .ficha-arriba {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icono-mascota {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background-color: var(--color-mint);
+    color: var(--color-accent-texto);
+  }
+
+  .ficha-identidad {
+    flex: 1;
+    min-width: 0;
+
+    h4 {
+      margin: 0;
+      font-family: var(--font-bold);
+      font-size: 1.1rem;
+    }
+
+    p {
+      margin: 2px 0 0;
+      color: color-mix(in oklch, var(--color-primary) 70%, white);
+      font-size: 0.94rem;
+    }
+  }
+
+  .sello-mascota,
+  .sello-puntos {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1.5px solid var(--color-primary);
+    border-radius: 999px;
+    background-color: var(--color-mint);
+    font-family: var(--font-bold);
+    font-size: 0.92rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ficha-notas {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in oklch, var(--color-primary) 15%, transparent);
+    font-size: 0.94rem;
+    line-height: 1.4;
+  }
+
+  .ficha-pie {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin: auto 0 0;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in oklch, var(--color-primary) 15%, transparent);
+    color: var(--color-accent-texto);
+    font-size: 0.9rem;
+  }
+
+  .vacio-carnet {
+    margin: 0;
+    padding: 18px 20px;
+    border: var(--border);
+    border-radius: 12px;
+    background-color: var(--color-white);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hora {
+    margin-left: 8px;
+    font-family: var(--font-bold);
+  }
+
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .motivo {
+    max-width: 260px;
+    overflow: hidden;
+    font-size: 0.92rem;
+    text-overflow: ellipsis;
+  }
+
+  .etiqueta.inactiva {
+    background-color: var(--color-surface);
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
+  }
+
+  tr.cancelada td:not(.fija-fin) {
+    color: color-mix(in oklch, var(--color-primary) 55%, white);
+  }
+</style>

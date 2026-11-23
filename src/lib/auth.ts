@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins/admin";
+import { captcha } from "better-auth/plugins/captcha";
 import { ac, roles } from "./permisos";
 import { pool } from "./db";
 

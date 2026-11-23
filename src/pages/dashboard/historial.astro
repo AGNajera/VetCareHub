@@ -1,0 +1,317 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import CarnetCliente from "../../components/sistema/CarnetCliente.astro";
+import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
+import { acciones } from "../../lib/permisos";
+import {
+  ahoraEnClinica,
+  calcularPuntosVisitas,
+  MESES_CADUCIDAD_PUNTOS,
+  nivelDePuntos,
+  type Servicio,
+} from "../../lib/citas";
+import { fecha, normalizar, numero } from "../../lib/formato";
+import type { MascotaCarnet, VisitaCarnet } from "../../lib/pdf-carnet";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const puedeVer = acciones(user.role, "historial").includes("ver");
+const hoy = ahoraEnClinica().fecha;
+
+await aplicarCorteDeCierre19h();
+
+type ClienteFila = {
+  id: string;
+  nombre: string;
+  correo: string;
+  telefono: string | null;
+  alta: Date;
+  mascotas: number;
+  visitas_totales: number;
+  visitas_completadas: { fecha: string; servicio: Servicio }[] | null;
+};
+
+const filasClientes = puedeVer
+  ? (
+      await pool.query<ClienteFila>(
+        `select u.id, u.name as nombre, u.email as correo, u.telefono, u."createdAt" as alta,
+                (select count(*)::int from mascotas m where m.cliente_id = u.id) as mascotas,
+                (select count(*)::int from citas c join mascotas m on m.id = c.mascota_id
+                 where m.cliente_id = u.id) as visitas_totales,
+                (select json_agg(json_build_object('fecha', to_char(c.fecha, 'YYYY-MM-DD'), 'servicio', c.servicio))
+                 from citas c
+                 join mascotas m on m.id = c.mascota_id
+                 where m.cliente_id = u.id and c.estado = 'completada') as visitas_completadas
+         from "user" u
+         where u.role = 'cliente'
+         order by u.name`,
+      )
+    ).rows
+  : [];
+
+const clientesConPuntos = filasClientes.map((c) => {
+  const lista = (c.visitas_completadas ?? []).map((v) => ({
+    ...v,
+    estado: "completada" as const,
+  }));
+  const resumen = calcularPuntosVisitas(lista, hoy);
+  const nivel = nivelDePuntos(resumen.vigentes);
+  return {
+    ...c,
+    completadas: lista.length,
+    puntos: resumen.vigentes,
+    proximoVencimiento: resumen.proximoVencimiento,
+    nivel,
+  };
+});
+
+const parametroCliente = Astro.url.searchParams.get("cliente");
+const elegido =
+  clientesConPuntos.find((c) => c.id === parametroCliente) ??
+  clientesConPuntos.find((c) => c.completadas > 0 || c.mascotas > 0) ??
+  clientesConPuntos[0] ??
+  null;
+
+const [mascotasElegido, visitasElegido] =
+  puedeVer && elegido
+    ? await Promise.all([
+        pool
+          .query<MascotaCarnet>(
+            `select id, nombre, especie, raza, to_char(nacimiento, 'YYYY-MM-DD') as nacimiento, notas
+             from mascotas
+             where cliente_id = $1
+             order by nombre`,
+            [elegido.id],
+          )
+          .then(({ rows }) => rows),
+        pool
+          .query<VisitaCarnet>(
+            `select c.id, c.mascota_id, m.nombre as mascota, m.especie,
+                    to_char(c.fecha, 'YYYY-MM-DD') as fecha, to_char(c.hora, 'HH24:MI') as hora,
+                    c.servicio, c.motivo, c.estado
+             from citas c
+             join mascotas m on m.id = c.mascota_id
+             where m.cliente_id = $1
+             order by c.fecha desc, c.hora desc`,
+            [elegido.id],
+          )
+          .then(({ rows }) => rows),
+      ])
+    : [[], []];
+---
+
+<Sistema titulo="Historial y carnet">
+  {
+    puedeVer && clientesConPuntos.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar carnet de cliente</span>
+        <Icono nombre="buscar" />
+        <input
+          id="buscar"
+          type="search"
+          placeholder="Buscar por cliente, correo o nivel…"
+          autocomplete="off"
+        />
+      </label>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso al historial y carnets.</p>
+    ) : clientesConPuntos.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay clientes registrados para mostrar su carnet. Registra uno en{" "}
+        <a href="/dashboard/clientes">Clientes</a>.
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Carnets y puntos por cliente">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Cliente</th>
+                <th>Correo</th>
+                <th class="numero">Mascotas</th>
+                <th class="numero">Visitas completadas</th>
+                <th class="numero">Puntos vigentes ({MESES_CADUCIDAD_PUNTOS} meses)</th>
+                <th>Próximo vencimiento</th>
+                <th>Nivel del carnet</th>
+                <th class="fija-fin">Carnet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientesConPuntos.map((c) => {
+                const seleccionado = elegido?.id === c.id;
+                return (
+                  <tr
+                    class:list={{ "fila-activa": seleccionado }}
+                    data-buscar={normalizar(
+                      [c.nombre, c.correo, c.telefono, c.nivel.nombre].join(" "),
+                    )}
+                  >
+                    <td class="fija-inicio nombre">
+                      <a href={`/dashboard/historial?cliente=${c.id}#vista-carnet`}>
+                        {c.nombre}
+                      </a>
+                    </td>
+                    <td translate="no">{c.correo}</td>
+                    <td class="numero">{numero.format(c.mascotas)}</td>
+                    <td class="numero">
+                      {numero.format(c.completadas)}
+                      <span class="secundario"> de {numero.format(c.visitas_totales)}</span>
+                    </td>
+                    <td class="numero">
+                      <span class="sello-tabla">{numero.format(c.puntos)} pts</span>
+                    </td>
+                    <td class="secundario">
+                      {c.proximoVencimiento ? (
+                        <>
+                          {numero.format(c.proximoVencimiento.puntos)} pts ·{" "}
+                          {fecha.format(new Date(`${c.proximoVencimiento.fecha}T00:00:00Z`))}
+                        </>
+                      ) : (
+                        `Vigencia de ${MESES_CADUCIDAD_PUNTOS} meses`
+                      )}
+                    </td>
+                    <td>
+                      <span class="etiqueta">{c.nivel.nombre}</span>
+                    </td>
+                    <td class="fija-fin">
+                      <div class="acciones">
+                        <a
+                          class:list={["boton-ver", { activo: seleccionado }]}
+                          href={`/dashboard/historial?cliente=${c.id}#vista-carnet`}
+                          aria-current={seleccionado ? "true" : undefined}
+                        >
+                          <Icono nombre="carnet" />
+                          {seleccionado ? "Viendo" : "Ver carnet"}
+                        </a>
+                        <a
+                          class="boton-icono"
+                          href={`/api/carnet/${c.id}.pdf`}
+                          download
+                          aria-label={`Descargar carnet de ${c.nombre} en PDF`}
+                          title="Descargar carnet en PDF"
+                        >
+                          <Icono nombre="descargar" />
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+
+        {elegido && (
+          <section id="vista-carnet" class="bloque-carnet" aria-label={`Carnet de ${elegido.nombre}`}>
+            <CarnetCliente
+              carnet={{
+                id: elegido.id,
+                nombre: elegido.nombre,
+                correo: elegido.correo,
+                telefono: elegido.telefono,
+                alta: elegido.alta,
+                mascotas: mascotasElegido,
+                visitas: visitasElegido,
+              }}
+            />
+          </section>
+        )}
+      </>
+    )
+  }
+</Sistema>
+
+<script>
+  import { activarBuscador } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+</script>
+
+<style>
+  .nombre {
+    font-family: var(--font-bold);
+
+    a {
+      color: inherit;
+      text-decoration: none;
+
+      &:hover {
+        color: var(--color-accent-texto);
+        text-decoration: underline;
+      }
+
+      &:focus-visible {
+        outline: var(--focus-ring);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  tr.fila-activa td {
+    background-color: color-mix(in oklch, var(--color-mint) 45%, white);
+  }
+
+  .sello-tabla {
+    display: inline-block;
+    padding: 3px 10px;
+    border: 1.5px solid var(--color-primary);
+    border-radius: 999px;
+    background-color: var(--color-mint);
+    font-family: var(--font-bold);
+    font-size: 0.92rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .acciones {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .boton-ver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: var(--border);
+    border-radius: 8px;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    font-family: var(--font-bold);
+    font-size: 0.92rem;
+    text-decoration: none;
+
+    &:hover {
+      background-color: var(--color-mint);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    &.activo {
+      background-color: var(--color-primary);
+      color: var(--color-white);
+    }
+
+    :global(.icono) {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .bloque-carnet {
+    margin-top: 32px;
+    scroll-margin-top: 24px;
+  }
+</style>

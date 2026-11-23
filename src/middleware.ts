@@ -1,6 +1,10 @@
 import { defineMiddleware } from "astro:middleware";
 import { auth } from "./lib/auth";
+import { iniciarCronDiario19h } from "./lib/cron-citas";
 import { esCliente } from "./lib/permisos";
+
+// Arranca el programador diario de cierre de citas a las 19:00 h (Ciudad de México)
+iniciarCronDiario19h();
 
 export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.user = null;
@@ -10,9 +14,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (context.isPrerendered) return next();
 
   const sesion = await auth.api.getSession({ headers: context.request.headers });
-  if (sesion) {
+  if (sesion && !sesion.user.banned) {
     context.locals.user = sesion.user;
     context.locals.session = sesion.session;
+  } else if (sesion?.user.banned) {
+    context.cookies.delete("better-auth.session_data", { path: "/" });
+    context.cookies.delete("__Secure-better-auth.session_data", { path: "/" });
+    context.cookies.delete("better-auth.session_token", { path: "/" });
+    context.cookies.delete("__Secure-better-auth.session_token", { path: "/" });
   }
 
   // Todo lo que está dentro de /dashboard es para el personal y lo de /cliente, para los

@@ -11,11 +11,13 @@ export const ac = createAccessControl({
   proveedores: todas,
   clientes: todas,
   citas: todas,
+  empleados: todas,
+  historial: ["ver"] as const,
 });
 
 // Un rol por nivel del organigrama (src/data/equipo.ts), más el de los clientes.
 // Todo el personal registra clientes y agenda y corrige citas (las citas no se borran:
-// se cancelan)
+// se cancelan). Los empleados tampoco se borran: la gerencia los da de baja
 export const roles = {
   gerencia: ac.newRole({
     ...adminAc.statements,
@@ -23,26 +25,35 @@ export const roles = {
     proveedores: ["ver", "crear", "editar", "eliminar"],
     clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
+    empleados: ["ver", "crear", "editar", "eliminar"],
+    historial: ["ver"],
   }),
   jefatura: ac.newRole({
     inventario: ["ver", "crear", "editar"],
     proveedores: ["ver", "crear", "editar"],
     clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
+    empleados: ["ver"],
+    historial: ["ver"],
   }),
   personal: ac.newRole({
     inventario: ["ver"],
     proveedores: ["ver"],
     clientes: ["ver", "crear", "editar", "eliminar"],
     citas: ["ver", "crear", "editar"],
+    empleados: ["ver"],
+    historial: ["ver"],
   }),
   // Los clientes no entran a /dashboard: tienen su panel en /cliente, donde solo ven y
-  // cambian sus mascotas y sus citas (src/actions/index.ts lo revisa con su id)
+  // cambian sus mascotas, sus citas y su carnet (src/actions/index.ts lo revisa con su id)
   cliente: ac.newRole({}),
 };
 
 export type Rol = keyof typeof roles;
-export type Seccion = "inventario" | "proveedores" | "clientes" | "citas";
+export type RolPersonal = Exclude<Rol, "cliente">;
+export type Seccion = "inventario" | "proveedores" | "clientes" | "citas" | "empleados" | "historial";
+
+export const rolesPersonal: readonly RolPersonal[] = ["gerencia", "jefatura", "personal"];
 
 // Cómo se muestra cada rol en el sidebar y en Mi cuenta
 export const nombreRol: Record<Rol, string> = {

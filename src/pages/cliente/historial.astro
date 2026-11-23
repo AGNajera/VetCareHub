@@ -1,0 +1,64 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import CarnetCliente from "../../components/sistema/CarnetCliente.astro";
+import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
+import type { MascotaCarnet, VisitaCarnet } from "../../lib/pdf-carnet";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+
+await aplicarCorteDeCierre19h();
+
+const [{ rows: clientes }, { rows: mascotas }, { rows: visitas }] = await Promise.all([
+  pool.query<{
+    id: string;
+    nombre: string;
+    correo: string;
+    telefono: string | null;
+    alta: Date;
+  }>(
+    `select id, name as nombre, email as correo, telefono, "createdAt" as alta
+     from "user"
+     where id = $1`,
+    [user.id],
+  ),
+  pool.query<MascotaCarnet>(
+    `select id, nombre, especie, raza, to_char(nacimiento, 'YYYY-MM-DD') as nacimiento, notas
+     from mascotas
+     where cliente_id = $1
+     order by nombre`,
+    [user.id],
+  ),
+  pool.query<VisitaCarnet>(
+    `select c.id, c.mascota_id, m.nombre as mascota, m.especie,
+            to_char(c.fecha, 'YYYY-MM-DD') as fecha, to_char(c.hora, 'HH24:MI') as hora,
+            c.servicio, c.motivo, c.estado
+     from citas c
+     join mascotas m on m.id = c.mascota_id
+     where m.cliente_id = $1
+     order by c.fecha desc, c.hora desc`,
+    [user.id],
+  ),
+]);
+
+const titular = clientes[0] ?? {
+  id: user.id,
+  nombre: user.name,
+  correo: user.email,
+  telefono: user.telefono ?? null,
+  alta: new Date(),
+};
+---
+
+<Sistema titulo="Historial y carnet">
+  <CarnetCliente
+    carnet={{
+      ...titular,
+      mascotas,
+      visitas,
+    }}
+    esClienteVista
+  />
+</Sistema>

@@ -3,12 +3,15 @@ import Sistema from "../../layouts/Sistema.astro";
 import BienvenidaMascota from "../../components/sistema/BienvenidaMascota.astro";
 import Icono, { type NombreIcono } from "../../components/sistema/Icono.astro";
 import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
 import { preciosServicio, servicios, type Servicio } from "../../lib/citas";
 import { fecha, numero, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
+
+await aplicarCorteDeCierre19h();
 
 type Proxima = {
   id: string;
@@ -24,6 +27,7 @@ type Proxima = {
 const [{ rows }, { rows: proximas }] = await Promise.all([
   pool.query<{
     personal: number;
+    personal_baja: number;
     clientes: number;
     mascotas: number;
     citas: number;
@@ -31,7 +35,8 @@ const [{ rows }, { rows: proximas }] = await Promise.all([
     productos: number;
     agotandose: number;
   }>(
-    `select (select count(*)::int from "user" where role <> 'cliente') as personal,
+    `select (select count(*)::int from "user" where role <> 'cliente' and not coalesce(banned, false)) as personal,
+            (select count(*)::int from "user" where role <> 'cliente' and coalesce(banned, false)) as personal_baja,
             (select count(*)::int from "user" where role = 'cliente') as clientes,
             (select count(*)::int from mascotas) as mascotas,
             (select count(*)::int from citas
@@ -57,7 +62,7 @@ const [{ rows }, { rows: proximas }] = await Promise.all([
      limit 5`,
   ),
 ]);
-const { personal, clientes, mascotas, citas, citas_hoy, productos, agotandose } = rows[0];
+const { personal, personal_baja, clientes, mascotas, citas, citas_hoy, productos, agotandose } = rows[0];
 
 const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcono; href?: string }[] = [
   {
@@ -68,11 +73,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     href: "/dashboard/citas",
   },
   {
-    titulo: "Clientes",
+    titulo: "Clientes y carnets",
     valor: numero.format(clientes),
     nota: mascotas ? `${mascotas} ${mascotas === 1 ? "mascota" : "mascotas"}` : "Sin mascotas",
-    icono: "clientes",
-    href: "/dashboard/clientes",
+    icono: "carnet",
+    href: "/dashboard/historial",
   },
   {
     titulo: "Productos",
@@ -82,10 +87,11 @@ const tarjetas: { titulo: string; valor: string; nota: string; icono: NombreIcon
     href: "/dashboard/inventario",
   },
   {
-    titulo: "Personal",
+    titulo: "Empleados",
     valor: numero.format(personal),
-    nota: "Cuentas de la clínica",
+    nota: personal_baja ? `${personal_baja} en baja` : "Todos activos",
     icono: "usuarios",
+    href: "/dashboard/empleados",
   },
 ];
 ---

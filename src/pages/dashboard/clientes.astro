@@ -128,6 +128,14 @@ const fechaCita = (texto: string) => {
                   {conAcciones && (
                     <td class="fija-fin">
                       <div class="acciones">
+                        <a
+                          class="boton-icono"
+                          href={`/dashboard/historial?cliente=${c.id}#vista-carnet`}
+                          aria-label={`Ver carnet de ${c.nombre}`}
+                          title="Ver carnet y puntos"
+                        >
+                          <Icono nombre="carnet" />
+                        </a>
                         {puedeEditar && (
                           <>
                             <button

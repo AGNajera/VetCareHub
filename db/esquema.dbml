@@ -70,7 +70,7 @@ Table citas {
   id uuid [pk, default: `gen_random_uuid()`]
   mascota_id uuid [not null, ref: > mascotas.id]
   fecha date [not null]
-  hora time [not null, note: 'Cada 30 minutos de 09:00 a 15:30 (hasta las 16:00)']
+  hora time [not null, note: 'Cada 30 minutos de 09:00 a 18:30 (hasta las 19:00)']
   servicio text [not null, note: 'Uno de los 20 servicios de catalogoServicios (src/lib/citas.ts)']
   motivo text
   estado text [not null, default: 'pendiente', note: 'pendiente, confirmada, completada o cancelada']
