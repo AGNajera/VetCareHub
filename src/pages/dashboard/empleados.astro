@@ -1,0 +1,657 @@
+---
+import Sistema from "../../layouts/Sistema.astro";
+import Icono from "../../components/sistema/Icono.astro";
+import { pool } from "../../lib/db";
+import {
+  acciones,
+  nombreRol,
+  rolesPersonal,
+  type RolPersonal,
+} from "../../lib/permisos";
+import { equipo } from "../../data/equipo";
+import { fotoDeCorreo } from "../../data/fotos";
+import { fecha, normalizar } from "../../lib/formato";
+
+export const prerender = false;
+
+const user = Astro.locals.user!;
+const permisos = acciones(user.role, "empleados");
+const puedeVer = permisos.includes("ver");
+const puedeCrear = permisos.includes("crear");
+const puedeEditar = permisos.includes("editar");
+const puedeDarDeBaja = permisos.includes("eliminar");
+const conAcciones = puedeEditar || puedeDarDeBaja;
+
+type Empleado = {
+  id: string;
+  nombre: string;
+  correo: string;
+  puesto: string | null;
+  rol: RolPersonal;
+  telefono: string | null;
+  activo: boolean;
+  alta: Date;
+};
+
+// Primero los empleados activos ordenados por jerarquía del organigrama y nombre;
+// al final quienes tienen estatus de baja (no se eliminan de la base de datos)
+const empleados = puedeVer
+  ? (
+      await pool.query<Empleado>(
+        `select u.id, u.name as nombre, u.email as correo, u.puesto, u.role as rol,
+                u.telefono, not coalesce(u.banned, false) as activo, u."createdAt" as alta
+         from "user" u
+         where u.role <> 'cliente'
+         order by coalesce(u.banned, false) asc,
+                  case u.role
+                    when 'gerencia' then 1
+                    when 'jefatura' then 2
+                    else 3
+                  end,
+                  u.name`,
+      )
+    ).rows
+  : [];
+
+const puestosSugeridos = [...new Set(equipo.map((p) => p.puesto))];
+
+const inicialesDe = (nombre: string) =>
+  nombre
+    .split(" ")
+    .filter((_, i, partes) => i === 0 || i === partes.length - 2)
+    .map((parte) => parte[0])
+    .join("");
+---
+
+<Sistema titulo="Empleados">
+  {
+    puedeVer && empleados.length > 0 && (
+      <label slot="acciones" class="buscador campo">
+        <span class="visualmente-oculto">Buscar empleado</span>
+        <Icono nombre="buscar" />
+        <input
+          id="buscar"
+          type="search"
+          placeholder="Buscar por nombre, puesto, correo o estatus…"
+          autocomplete="off"
+        />
+      </label>
+    )
+  }
+  {
+    puedeCrear && (
+      <button slot="acciones" type="button" class="boton-nuevo" data-nuevo>
+        <Icono nombre="mas" />
+        Nuevo empleado
+      </button>
+    )
+  }
+
+  {
+    !puedeVer ? (
+      <p class="vacio">Tu rol no tiene acceso a los empleados.</p>
+    ) : empleados.length === 0 ? (
+      <p class="vacio">
+        Todavía no hay empleados registrados.
+        {puedeCrear && " Registra el primero con Nuevo empleado."}
+      </p>
+    ) : (
+      <>
+        <div class="marco-tabla" tabindex="0" role="region" aria-label="Empleados de la clínica">
+          <table id="tabla">
+            <thead>
+              <tr>
+                <th class="fija-inicio">Empleado</th>
+                <th>Puesto</th>
+                <th>Nivel / Rol</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Alta</th>
+                <th>Estatus</th>
+                {conAcciones && <th class="fija-fin">Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {empleados.map((e) => {
+                const foto = fotoDeCorreo(e.correo);
+                const esMismoUsuario = e.id === user.id;
+                const estatusTexto = e.activo ? "Activo" : "Baja";
+                return (
+                  <tr
+                    class:list={{ inactivo: !e.activo }}
+                    data-datos={JSON.stringify({
+                      id: e.id,
+                      nombre: e.nombre,
+                      correo: e.correo,
+                      puesto: e.puesto,
+                      rol: e.rol,
+                      telefono: e.telefono,
+                      activo: e.activo,
+                    })}
+                    data-buscar={normalizar(
+                      [
+                        e.nombre,
+                        e.puesto,
+                        nombreRol[e.rol] ?? e.rol,
+                        e.correo,
+                        e.telefono,
+                        estatusTexto,
+                      ].join(" "),
+                    )}
+                  >
+                    <td class="fija-inicio celda-empleado">
+                      <div class="identidad">
+                        {foto ? (
+                          <img
+                            class="avatar-tabla"
+                            src={foto.src}
+                            width="34"
+                            height="34"
+                            loading="lazy"
+                            alt=""
+                          />
+                        ) : (
+                          <span class="avatar-tabla iniciales-tabla" aria-hidden="true">
+                            {inicialesDe(e.nombre)}
+                          </span>
+                        )}
+                        <span class="nombre">{e.nombre}</span>
+                      </div>
+                    </td>
+                    <td>{e.puesto ?? "—"}</td>
+                    <td>
+                      <span class:list={["etiqueta", { "rol-gerencia": e.rol === "gerencia" }]}>
+                        {nombreRol[e.rol] ?? e.rol}
+                      </span>
+                    </td>
+                    <td>
+                      <a href={`mailto:${e.correo}`} translate="no">{e.correo}</a>
+                    </td>
+                    <td>
+                      {e.telefono ? (
+                        <a href={`tel:${e.telefono.replace(/\s/g, "")}`}>{e.telefono}</a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td class="secundario">{fecha.format(e.alta)}</td>
+                    <td>
+                      {e.activo ? (
+                        <span class="etiqueta">Activo</span>
+                      ) : (
+                        <span class="etiqueta alerta">Baja</span>
+                      )}
+                    </td>
+                    {conAcciones && (
+                      <td class="fija-fin">
+                        <div class="acciones">
+                          {puedeEditar && (
+                            <button
+                              type="button"
+                              class="boton-icono"
+                              data-editar
+                              aria-label={`Editar ${e.nombre}`}
+                              title="Editar"
+                            >
+                              <Icono nombre="editar" />
+                            </button>
+                          )}
+                          {e.activo ? (
+                            <>
+                              {puedeEditar && (
+                                <button
+                                  type="button"
+                                  class="boton-icono"
+                                  data-password
+                                  aria-label={`Generar nueva contraseña para ${e.nombre}`}
+                                  title="Nueva contraseña"
+                                >
+                                  <Icono nombre="llave" />
+                                </button>
+                              )}
+                              {puedeDarDeBaja && (
+                                <button
+                                  type="button"
+                                  class="boton-icono peligro"
+                                  data-baja
+                                  disabled={esMismoUsuario}
+                                  aria-label={
+                                    esMismoUsuario
+                                      ? "No puedes darte de baja a ti mismo"
+                                      : `Cambiar estatus de ${e.nombre} a baja`
+                                  }
+                                  title={
+                                    esMismoUsuario
+                                      ? "Tu cuenta actual"
+                                      : "Cambiar estatus a baja"
+                                  }
+                                >
+                                  <Icono nombre="deshabilitar" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            puedeDarDeBaja && (
+                              <button
+                                type="button"
+                                class="boton reactivar"
+                                data-reactivar
+                                aria-label={`Reactivar a ${e.nombre}`}
+                              >
+                                <Icono nombre="habilitar" />
+                                Reactivar
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p class="vacio sin-resultados" hidden />
+      </>
+    )
+  }
+
+  {
+    (puedeCrear || puedeEditar) && (
+      <dialog id="empleado" class="dialogo" aria-labelledby="titulo-empleado">
+        <form novalidate>
+          <h2 id="titulo-empleado">Nuevo empleado</h2>
+          <input type="hidden" name="id" />
+          <div class="campos">
+            <div class="campo ancho">
+              <label for="e-nombre">Nombre completo</label>
+              <input
+                id="e-nombre"
+                name="nombre"
+                autocomplete="off"
+                placeholder="Nombre y apellidos…"
+                required
+              />
+            </div>
+            <div class="campo">
+              <label for="e-puesto">Puesto</label>
+              <input
+                id="e-puesto"
+                name="puesto"
+                list="puestos-clinica"
+                autocomplete="off"
+                placeholder="Ej. Consulta y vacunación…"
+                required
+              />
+              <datalist id="puestos-clinica">
+                {puestosSugeridos.map((puesto) => (
+                  <option value={puesto} />
+                ))}
+              </datalist>
+            </div>
+            <div class="campo">
+              <label for="e-rol">Nivel en el sistema</label>
+              <select id="e-rol" name="rol" required>
+                {rolesPersonal.map((clave) => (
+                  <option value={clave}>{nombreRol[clave]}</option>
+                ))}
+              </select>
+            </div>
+            <div class="campo">
+              <label for="e-correo">Correo institucional</label>
+              <input
+                id="e-correo"
+                name="correo"
+                type="email"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="apellido.nombre@vetcarehub.mx…"
+                required
+              />
+            </div>
+            <div class="campo">
+              <label for="e-telefono">Teléfono</label>
+              <input
+                id="e-telefono"
+                name="telefono"
+                type="tel"
+                autocomplete="off"
+                placeholder="777 000 0000…"
+              />
+            </div>
+            <p class="ayuda ancho" data-ayuda-nuevo>
+              Al guardar se generará una contraseña temporal para que el empleado entre al
+              panel interno de la clínica según los permisos de su nivel.
+            </p>
+          </div>
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">
+              Registrar empleado
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    puedeEditar && (
+      <dialog
+        id="confirmar-password"
+        class="dialogo dialogo-angosto"
+        aria-labelledby="titulo-confirmar-pass"
+      >
+        <form novalidate>
+          <h2 id="titulo-confirmar-pass">Nueva contraseña</h2>
+          <input type="hidden" name="id" />
+          <p class="dialogo-texto" />
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton principal">
+              Generar contraseña
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    (puedeCrear || puedeEditar) && (
+      <dialog id="password" class="dialogo dialogo-angosto" aria-labelledby="titulo-password">
+        <form method="dialog">
+          <h2 id="titulo-password">Credenciales del empleado</h2>
+          <div class="dialogo-texto">
+            <p>
+              Comparte estos datos con <strong data-nombre />. La contraseña solo se muestra
+              esta vez; después puede cambiarla en Mi cuenta.
+            </p>
+            <dl class="credenciales">
+              <dt>Correo</dt>
+              <dd data-correo translate="no" />
+              <dt>Contraseña</dt>
+              <dd>
+                <code data-clave translate="no" />
+              </dd>
+            </dl>
+          </div>
+          <div class="dialogo-botones">
+            <button type="button" class="boton" data-copiar>
+              Copiar
+            </button>
+            <button type="submit" class="boton principal">
+              Listo
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+
+  {
+    puedeDarDeBaja && (
+      <dialog id="baja" class="dialogo dialogo-angosto" aria-labelledby="titulo-baja">
+        <form novalidate>
+          <h2 id="titulo-baja">Dar de baja al empleado</h2>
+          <input type="hidden" name="id" />
+          <p class="dialogo-texto" />
+          <p class="error-form" role="alert" />
+          <div class="dialogo-botones">
+            <button type="submit" class="boton" formmethod="dialog" formnovalidate value="cancelar">
+              Cancelar
+            </button>
+            <button type="submit" class="boton peligro">
+              Confirmar baja
+            </button>
+          </div>
+        </form>
+      </dialog>
+    )
+  }
+</Sistema>
+
+<script>
+  import { actions } from "astro:actions";
+  import {
+    activarBuscador,
+    enviarConAccion,
+    llenarFormulario,
+    mensajeDeError,
+    mostrarError,
+  } from "../../scripts/sistema";
+
+  const tabla = document.querySelector<HTMLTableElement>("#tabla");
+  activarBuscador(document.querySelector("#buscar"), tabla);
+
+  const ventanaPassword = document.querySelector<HTMLDialogElement>("#password");
+  const mostrarPassword = (nombre: string, correo: string, clave: string) => {
+    if (!ventanaPassword) return;
+    ventanaPassword.querySelector("[data-nombre]")!.textContent = nombre;
+    ventanaPassword.querySelector("[data-correo]")!.textContent = correo;
+    ventanaPassword.querySelector("[data-clave]")!.textContent = clave;
+    ventanaPassword.showModal();
+  };
+  ventanaPassword?.addEventListener("close", () => location.reload());
+  ventanaPassword?.querySelector("[data-copiar]")?.addEventListener("click", async (event) => {
+    const boton = event.currentTarget as HTMLButtonElement;
+    const correo = ventanaPassword.querySelector("[data-correo]")!.textContent;
+    const clave = ventanaPassword.querySelector("[data-clave]")!.textContent;
+    try {
+      await navigator.clipboard.writeText(`Correo: ${correo}\nContraseña: ${clave}`);
+      boton.textContent = "Copiado";
+    } catch {
+      mostrarError("No se pudo copiar. Selecciona la contraseña y cópiala a mano.");
+    }
+  });
+
+  const dialogo = document.querySelector<HTMLDialogElement>("#empleado");
+  const form = dialogo?.querySelector("form");
+  const titulo = dialogo?.querySelector("h2");
+  const guardar = dialogo?.querySelector<HTMLButtonElement>("[type=submit]:not([value])");
+  const ayudaNuevo = dialogo?.querySelector<HTMLElement>("[data-ayuda-nuevo]");
+
+  const abrir = (datos?: Record<string, unknown>) => {
+    if (!dialogo || !form || !titulo || !guardar || !ayudaNuevo) return;
+    llenarFormulario(form, datos ?? { rol: "personal" });
+    titulo.textContent = datos ? `Editar ${datos.nombre}` : "Nuevo empleado";
+    guardar.textContent = datos ? "Guardar cambios" : "Registrar empleado";
+    ayudaNuevo.hidden = Boolean(datos);
+    dialogo.showModal();
+  };
+
+  document.querySelector("[data-nuevo]")?.addEventListener("click", () => abrir());
+
+  let enviado = { nombre: "", correo: "" };
+  enviarConAccion(
+    dialogo,
+    (datos) => {
+      enviado = {
+        nombre: String(datos.get("nombre")).trim(),
+        correo: String(datos.get("correo")).trim().toLowerCase(),
+      };
+      return actions.empleados.guardar(datos);
+    },
+    ({ password }) => {
+      if (password) mostrarPassword(enviado.nombre, enviado.correo, password);
+      else location.reload();
+    },
+  );
+
+  const confirmarPass = document.querySelector<HTMLDialogElement>("#confirmar-password");
+  let elegido = { nombre: "", correo: "" };
+  enviarConAccion(
+    confirmarPass,
+    (datos) => actions.empleados.nuevaPassword({ id: String(datos.get("id")) }),
+    ({ password }) => mostrarPassword(elegido.nombre, elegido.correo, password),
+  );
+
+  const dialogoBaja = document.querySelector<HTMLDialogElement>("#baja");
+  enviarConAccion(dialogoBaja, (datos) =>
+    actions.empleados.cambiarEstatus({ id: String(datos.get("id")), activo: false }),
+  );
+
+  tabla?.addEventListener("click", async (event) => {
+    const boton = (event.target as Element).closest<HTMLButtonElement>("button");
+    const fila = boton?.closest<HTMLTableRowElement>("tr");
+    if (!boton || !fila?.dataset.datos) return;
+    const datos = JSON.parse(fila.dataset.datos);
+
+    if (boton.hasAttribute("data-editar")) abrir(datos);
+
+    if (boton.hasAttribute("data-password") && confirmarPass) {
+      elegido = { nombre: datos.nombre, correo: datos.correo };
+      confirmarPass.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      confirmarPass.querySelector(".dialogo-texto")!.textContent =
+        `Se generará una contraseña nueva para ${datos.nombre} y se cerrará su sesión actual.`;
+      confirmarPass.showModal();
+    }
+
+    if (boton.hasAttribute("data-baja") && dialogoBaja) {
+      dialogoBaja.querySelector<HTMLInputElement>("[name=id]")!.value = datos.id;
+      dialogoBaja.querySelector(".dialogo-texto")!.textContent =
+        `El estatus de ${datos.nombre} cambiará a Baja. Su registro se conserva en el historial de la clínica, pero no podrá iniciar sesión hasta que se reactive.`;
+      dialogoBaja.showModal();
+    }
+
+    if (boton.hasAttribute("data-reactivar")) {
+      boton.disabled = true;
+      const { error } = await actions.empleados.cambiarEstatus({
+        id: datos.id,
+        activo: true,
+      });
+      if (error) {
+        boton.disabled = false;
+        mostrarError(mensajeDeError(error));
+        return;
+      }
+      location.reload();
+    }
+  });
+</script>
+
+<style>
+  .identidad {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar-tabla {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .iniciales-tabla {
+    display: grid;
+    place-items: center;
+    background-color: var(--color-accent-texto);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 0.85rem;
+  }
+
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .rol-gerencia {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  td a {
+    color: inherit;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: var(--color-accent-texto);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .acciones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .reactivar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.95rem;
+
+    :global(.icono) {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  /* Los empleados dados de baja permanecen visibles con contraste accesible >= 4.5:1 */
+  tr.inactivo td:not(.fija-fin) {
+    color: color-mix(in oklch, var(--color-primary) 65%, white);
+  }
+
+  tr.inactivo .nombre {
+    text-decoration: line-through;
+  }
+
+  tr.inactivo .avatar-tabla {
+    filter: grayscale(1);
+    opacity: 0.75;
+  }
+
+  .ayuda {
+    margin: 0;
+    line-height: 1.5;
+
+    &.ancho {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .dialogo-texto p {
+    margin: 0 0 16px;
+  }
+
+  .credenciales {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    margin: 0;
+    padding: 14px 16px;
+    border: var(--border);
+    border-radius: 10px;
+    background-color: var(--color-white);
+
+    dt {
+      font-family: var(--font-bold);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    code {
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+    }
+  }
+</style>

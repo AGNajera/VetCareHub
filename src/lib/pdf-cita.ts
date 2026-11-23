@@ -328,7 +328,7 @@ export const generarPdfCita = (cita: DatosCitaPdf): Uint8Array => {
     "0.6 w",
     `${MARGEN} ${y(720)} m ${ANCHO - MARGEN} ${y(720)} l S`,
     texto("F2", 10, MARGEN, 738, "VetCareHub · Av. Emiliano Zapata 123, Tlaltenango, Cuernavaca, Morelos"),
-    texto("F1", 9.5, MARGEN, 753, "Tel. 777 123 4567 · vetcarehubmx@gmail.com · Atención de 9:00 a 16:00 h"),
+    texto("F1", 9.5, MARGEN, 753, "Tel. 777 123 4567 · vetcarehubmx@gmail.com · Atención de 9:00 a 19:00 h"),
   ];
 
   const contenido = ops.join("\n");

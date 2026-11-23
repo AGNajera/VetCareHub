@@ -3,17 +3,20 @@ import Sistema from "../../layouts/Sistema.astro";
 import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
 import { acciones } from "../../lib/permisos";
 import {
+  ahoraEnClinica,
   especies,
   estados,
+  horaCierre,
   preciosServicio,
   servicios,
   type Especie,
   type Estado,
   type Servicio,
 } from "../../lib/citas";
-import { fecha, normalizar, pesos } from "../../lib/formato";
+import { fecha, normalizar, numero, pesos } from "../../lib/formato";
 
 export const prerender = false;
 
@@ -22,6 +25,8 @@ const permisos = acciones(user.role, "citas");
 const puedeVer = permisos.includes("ver");
 const puedeCrear = permisos.includes("crear");
 const puedeEditar = permisos.includes("editar");
+
+await aplicarCorteDeCierre19h();
 
 type Cita = {
   id: string;
@@ -70,9 +75,43 @@ const [citas, mascotas] = puedeVer
 
 const claseEstado = (estado: Estado) =>
   estado === "pendiente" ? "alerta" : estado === "cancelada" ? "inactiva" : "";
+
+const ahora = ahoraEnClinica();
+const vencidasSinCompletar = citas.filter(
+  (c) =>
+    (c.estado === "pendiente" || c.estado === "confirmada") &&
+    `${c.fecha} ${c.hora}` <= `${ahora.fecha} ${ahora.hora}`,
+).length;
 ---
 
 <Sistema titulo="Citas">
+  {
+    puedeVer && (
+      <aside class="cron-barra" aria-label="Cierre automático diario de citas">
+        <div class="cron-info">
+          <span class="cron-icono" aria-hidden="true">
+            <Icono nombre="reloj" />
+          </span>
+          <div>
+            <p class="cron-titulo">
+              Cron Job de cierre diario · <strong>{horaCierre} h</strong>
+            </p>
+            <p class="cron-texto">
+              Al cerrar la veterinaria a las {horaCierre} h se cancelan en automático las citas
+              pendientes o confirmadas cuya fecha y hora ya pasaron.
+              {vencidasSinCompletar > 0 && (
+                <strong>
+                  {" "}
+                  Hay {numero.format(vencidasSinCompletar)}{" "}
+                  {vencidasSinCompletar === 1 ? "cita vencida" : "citas vencidas"} por cerrar hoy.
+                </strong>
+              )}
+            </p>
+          </div>
+        </div>
+      </aside>
+    )
+  }
   {
     puedeVer && citas.length > 0 && (
       <label slot="acciones" class="buscador campo">
@@ -230,6 +269,49 @@ const claseEstado = (estado: Estado) =>
 </script>
 
 <style>
+  .cron-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 20px;
+    margin-bottom: 22px;
+    padding: 16px 20px;
+    border: var(--border);
+    border-radius: 14px;
+    background-color: var(--color-surface);
+  }
+
+  .cron-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex: 1 1 320px;
+  }
+
+  .cron-icono {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background-color: var(--color-mint);
+    color: var(--color-accent-texto);
+  }
+
+  .cron-titulo {
+    margin: 0 0 4px;
+    font-family: var(--font-bold);
+    font-size: 1.05rem;
+  }
+
+  .cron-texto {
+    margin: 0;
+    font-size: 0.96rem;
+    line-height: 1.45;
+  }
+
   .fecha {
     font-variant-numeric: tabular-nums;
   }

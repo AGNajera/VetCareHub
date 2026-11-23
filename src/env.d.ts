@@ -5,3 +5,9 @@ declare namespace App {
     session: import("./lib/auth").Sesion["session"] | null;
   }
 }
+
+interface Window {
+  turnstile?: {
+    reset: (container?: string | HTMLElement) => void;
+  };
+}

@@ -6,14 +6,16 @@
 // Las fechas y horas de las citas son las de la clínica
 export const zonaClinica = "America/Mexico_City";
 
-// Una cita cada 30 minutos desde que abre hasta media hora antes de cerrar
+// Una cita cada 30 minutos desde que abre hasta media hora antes de cerrar (19:00)
 const apertura = 9 * 60;
-const cierre = 16 * 60;
+const cierre = 19 * 60;
 const intervalo = 30;
+
+export const horaCierre = "19:00";
 
 const dosDigitos = (n: number) => String(n).padStart(2, "0");
 
-// "09:00", "09:30", …, "15:30"
+// "09:00", "09:30", …, "18:30"
 export const horarios = Array.from(
   { length: (cierre - apertura) / intervalo },
   (_, i) => apertura + i * intervalo,
@@ -155,6 +157,114 @@ export const servicios = Object.fromEntries(
 export const preciosServicio = Object.fromEntries(
   Object.entries(catalogoServicios).map(([clave, { precio }]) => [clave, precio]),
 ) as { [K in Servicio]: (typeof catalogoServicios)[K]["precio"] };
+
+// Cada cita completada suma en el carnet el 10% del precio del servicio en puntos,
+// con una vigencia de 6 meses a partir de la fecha de la cita
+export const MESES_CADUCIDAD_PUNTOS = 6;
+
+export const puntosServicio = Object.fromEntries(
+  Object.entries(catalogoServicios).map(([clave, { precio }]) => [clave, Math.round(precio * 0.1)]),
+) as Record<Servicio, number>;
+
+// Calcula la fecha exacta (YYYY-MM-DD) en que caducan los puntos de una cita (6 meses después)
+export const fechaCaducidadPuntos = (fechaCita: string): string => {
+  const [anio, mes, dia] = fechaCita.split("-").map(Number);
+  const totalMeses = mes - 1 + MESES_CADUCIDAD_PUNTOS;
+  const nuevoAnio = anio + Math.floor(totalMeses / 12);
+  const nuevoMes = (totalMeses % 12) + 1;
+  const ultimoDiaMes = new Date(Date.UTC(nuevoAnio, nuevoMes, 0)).getUTCDate();
+  const nuevoDia = Math.min(dia, ultimoDiaMes);
+  return `${nuevoAnio}-${dosDigitos(nuevoMes)}-${dosDigitos(nuevoDia)}`;
+};
+
+export const puntosVigentesEn = (fechaCita: string, hoy = ahoraEnClinica().fecha): boolean =>
+  fechaCaducidadPuntos(fechaCita) >= hoy;
+
+export const calcularPuntosVisitas = <
+  T extends { fecha: string; servicio: Servicio; estado: Estado },
+>(
+  visitas: readonly T[],
+  hoy = ahoraEnClinica().fecha,
+) => {
+  let vigentes = 0;
+  let vencidos = 0;
+  let enCurso = 0;
+  const porCaducar = new Map<string, number>();
+
+  for (const v of visitas) {
+    const pts = puntosServicio[v.servicio] ?? 0;
+    if (v.estado === "completada") {
+      const caduca = fechaCaducidadPuntos(v.fecha);
+      if (caduca >= hoy) {
+        vigentes += pts;
+        porCaducar.set(caduca, (porCaducar.get(caduca) ?? 0) + pts);
+      } else {
+        vencidos += pts;
+      }
+    } else if (v.estado === "pendiente" || v.estado === "confirmada") {
+      enCurso += pts;
+    }
+  }
+
+  const fechasOrdenadas = [...porCaducar.keys()].sort();
+  const proximaFecha = fechasOrdenadas[0] ?? null;
+  const proximoVencimiento = proximaFecha
+    ? { fecha: proximaFecha, puntos: porCaducar.get(proximaFecha)! }
+    : null;
+
+  return {
+    vigentes,
+    vencidos,
+    enCurso,
+    proximoVencimiento,
+  };
+};
+
+export const nivelesCarnet = [
+  {
+    clave: "inicial",
+    nombre: "Huella Inicial",
+    minimo: 0,
+    siguiente: 100,
+    beneficio: "Carnet digital activo y seguimiento de vacunas y consultas.",
+  },
+  {
+    clave: "bronce",
+    nombre: "Huella Bronce",
+    minimo: 100,
+    siguiente: 250,
+    beneficio: "5% de descuento en baño, estética completa y baño medicado.",
+  },
+  {
+    clave: "plata",
+    nombre: "Huella Plata",
+    minimo: 250,
+    siguiente: 500,
+    beneficio: "10% de descuento en consulta general y desparasitación.",
+  },
+  {
+    clave: "oro",
+    nombre: "Huella Oro",
+    minimo: 500,
+    siguiente: null,
+    beneficio: "15% de descuento en consultas, estética y estudios de laboratorio.",
+  },
+] as const;
+
+export const nivelDePuntos = (puntos: number) => {
+  const actual =
+    [...nivelesCarnet].reverse().find((nivel) => puntos >= nivel.minimo) ?? nivelesCarnet[0];
+  if (actual.siguiente === null) {
+    return { ...actual, faltan: 0, progreso: 100 };
+  }
+  const tramo = actual.siguiente - actual.minimo;
+  const avance = Math.min(tramo, Math.max(0, puntos - actual.minimo));
+  return {
+    ...actual,
+    faltan: actual.siguiente - puntos,
+    progreso: Math.round((avance / tramo) * 100),
+  };
+};
 
 export const estados = {
   pendiente: "Pendiente",

@@ -1,10 +1,11 @@
 import { ActionError, defineAction, type ActionAPIContext } from "astro:actions";
 import { z } from "astro/zod";
 import { randomBytes } from "node:crypto";
+import { appendFileSync } from "node:fs";
 import { APIError } from "better-auth/api";
 import { auth } from "../lib/auth";
 import { pool } from "../lib/db";
-import { acciones, esCliente, type Seccion } from "../lib/permisos";
+import { acciones, esCliente, rolesPersonal, type Seccion } from "../lib/permisos";
 import { ahoraEnClinica, claves, especies, estados, horarios, servicios } from "../lib/citas";
 
 // Lo que cambia el inventario, los proveedores, los clientes y las citas. Cada acción
@@ -30,6 +31,16 @@ const clienteOPermiso = (context: ActionAPIContext, seccion: Seccion, accion: st
 
 // Contraseña al azar para las cuentas de clientes: 12 caracteres de letras, números, - y _
 const passwordAlAzar = () => randomBytes(9).toString("base64url");
+
+// En local también anota el correo y la contraseña en cuentas.local.txt
+const guardarEnArchivoLocal = (correo: string, password: string) => {
+  if (process.env.VERCEL) return;
+  try {
+    appendFileSync("cuentas.local.txt", `${correo}\t${password}\n`, "utf8");
+  } catch {
+    // En entornos de solo lectura se ignora sin interrumpir la acción
+  }
+};
 
 // 23505: se repitió un valor que la base no deja repetir (unique)
 const esRepetido = (error: unknown) => (error as { code?: string }).code === "23505";
@@ -246,6 +257,7 @@ export const server = {
           if (error instanceof APIError && error.status === "BAD_REQUEST") throw repetido;
           throw error;
         }
+        guardarEnArchivoLocal(correo, password);
         return { password };
       },
     }),
@@ -255,11 +267,11 @@ export const server = {
       input: z.object({ id: z.string().min(1) }),
       handler: async ({ id }, context) => {
         exigir(context, "clientes", "editar");
-        const { rowCount } = await pool.query(
-          `select 1 from "user" where id = $1 and role = 'cliente'`,
+        const { rows } = await pool.query<{ email: string }>(
+          `select email from "user" where id = $1 and role = 'cliente'`,
           [id],
         );
-        if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
+        if (!rows[0]) throw new ActionError({ code: "NOT_FOUND", message: "Ese cliente ya no existe." });
 
         const password = passwordAlAzar();
         const ctx = await auth.$context;
@@ -276,6 +288,7 @@ export const server = {
           });
         }
         await pool.query(`delete from session where "userId" = $1`, [id]);
+        guardarEnArchivoLocal(rows[0].email, password);
         return { password };
       },
     }),
@@ -394,7 +407,7 @@ export const server = {
         id: opcional.pipe(z.uuid().nullable()),
         mascota_id: z.uuid("Elige la mascota."),
         fecha: z.iso.date("Elige la fecha."),
-        hora: z.enum(horarios, "Elige un horario entre 9:00 y 15:30."),
+        hora: z.enum(horarios, "Elige un horario entre 9:00 y 18:30."),
         servicio: z.enum(claves(servicios), "Elige el servicio."),
         motivo: opcional,
         estado: opcional.pipe(z.enum(claves(estados)).nullable()),
@@ -469,6 +482,135 @@ export const server = {
           [id, cliente],
         );
         if (!rowCount) throw new ActionError({ code: "NOT_FOUND", message: "Esa cita ya no se puede cancelar." });
+      },
+    }),
+  },
+
+  empleados: {
+    // Registra un nuevo integrante del personal o edita sus datos. Los empleados no se
+    // eliminan de la base: se cambia su estatus a baja
+    guardar: defineAction({
+      accept: "form",
+      input: z.object({
+        id: opcional,
+        nombre: z.string().trim().min(1, "Escribe el nombre del empleado."),
+        correo: z.string().trim().toLowerCase().pipe(z.email("El correo no es válido.")),
+        puesto: z.string().trim().min(1, "Escribe el puesto del empleado."),
+        rol: z.enum(rolesPersonal, "Elige el rol del empleado."),
+        telefono: opcional,
+      }),
+      handler: async ({ id, nombre, correo, puesto, rol, telefono }, context) => {
+        exigir(context, "empleados", id ? "editar" : "crear");
+        const repetido = new ActionError({
+          code: "CONFLICT",
+          message: `Ya hay una cuenta con el correo ${correo}.`,
+        });
+
+        if (id) {
+          if (id === context.locals.user?.id && rol !== "gerencia") {
+            throw new ActionError({
+              code: "BAD_REQUEST",
+              message: "No puedes quitarte el rol de gerencia a ti mismo.",
+            });
+          }
+          try {
+            const { rowCount } = await pool.query(
+              `update "user"
+               set name = $2, email = $3, puesto = $4, role = $5, telefono = $6, "updatedAt" = now()
+               where id = $1 and role <> 'cliente'`,
+              [id, nombre, correo, puesto, rol, telefono],
+            );
+            if (!rowCount) {
+              throw new ActionError({ code: "NOT_FOUND", message: "Ese empleado ya no existe." });
+            }
+          } catch (error) {
+            if (esRepetido(error)) throw repetido;
+            throw error;
+          }
+          if (id === context.locals.user?.id) {
+            context.cookies.delete("better-auth.session_data", { path: "/" });
+            context.cookies.delete("__Secure-better-auth.session_data", { path: "/" });
+          }
+          return { password: null };
+        }
+
+        const password = passwordAlAzar();
+        try {
+          await auth.api.createUser({
+            body: {
+              email: correo,
+              password,
+              name: nombre,
+              role: rol,
+              data: { puesto, telefono },
+            },
+          });
+        } catch (error) {
+          if (error instanceof APIError && error.status === "BAD_REQUEST") throw repetido;
+          throw error;
+        }
+        guardarEnArchivoLocal(correo, password);
+        return { password };
+      },
+    }),
+
+    // Genera una nueva contraseña al azar para un empleado y cierra sus sesiones activas
+    nuevaPassword: defineAction({
+      input: z.object({ id: z.string().min(1) }),
+      handler: async ({ id }, context) => {
+        exigir(context, "empleados", "editar");
+        const { rows } = await pool.query<{ email: string }>(
+          `select email from "user" where id = $1 and role <> 'cliente'`,
+          [id],
+        );
+        if (!rows[0]) {
+          throw new ActionError({ code: "NOT_FOUND", message: "Ese empleado ya no existe." });
+        }
+
+        const password = passwordAlAzar();
+        const ctx = await auth.$context;
+        const hash = await ctx.password.hash(password);
+        const { rowCount: actualizadas } = await pool.query(
+          `update account set password = $2, "updatedAt" = now()
+           where "userId" = $1 and "providerId" = 'credential'`,
+          [id, hash],
+        );
+        if (!actualizadas) {
+          throw new ActionError({
+            code: "NOT_FOUND",
+            message: "No se encontró el acceso con contraseña de ese empleado.",
+          });
+        }
+        await pool.query(`delete from session where "userId" = $1`, [id]);
+        guardarEnArchivoLocal(rows[0].email, password);
+        return { password };
+      },
+    }),
+
+    // Cambia el estatus del empleado entre activo y baja sin borrar su registro.
+    // Al dar de baja se bloquea su acceso (banned = true) y se cierran sus sesiones
+    cambiarEstatus: defineAction({
+      input: z.object({ id: z.string().min(1), activo: z.boolean() }),
+      handler: async ({ id, activo }, context) => {
+        exigir(context, "empleados", "eliminar");
+        if (id === context.locals.user?.id && !activo) {
+          throw new ActionError({
+            code: "BAD_REQUEST",
+            message: "No puedes darte de baja a ti mismo.",
+          });
+        }
+        const { rowCount } = await pool.query(
+          `update "user"
+           set banned = $2, "banReason" = $3, "updatedAt" = now()
+           where id = $1 and role <> 'cliente'`,
+          [id, !activo, activo ? null : "Baja"],
+        );
+        if (!rowCount) {
+          throw new ActionError({ code: "NOT_FOUND", message: "Ese empleado ya no existe." });
+        }
+        if (!activo) {
+          await pool.query(`delete from session where "userId" = $1`, [id]);
+        }
       },
     }),
   },

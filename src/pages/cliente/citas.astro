@@ -3,6 +3,7 @@ import Sistema from "../../layouts/Sistema.astro";
 import Icono from "../../components/sistema/Icono.astro";
 import FormCita from "../../components/sistema/FormCita.astro";
 import { pool } from "../../lib/db";
+import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
 import {
   estados,
   preciosServicio,
@@ -15,6 +16,8 @@ import { fecha, pesos } from "../../lib/formato";
 export const prerender = false;
 
 const user = Astro.locals.user!;
+
+await aplicarCorteDeCierre19h();
 
 type Cita = {
   id: string;
