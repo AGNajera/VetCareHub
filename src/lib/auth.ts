@@ -53,7 +53,16 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [admin({ ac, roles, defaultRole: "personal", adminRoles: ["gerencia"] })],
+  plugins: [
+    admin({ ac, roles, defaultRole: "personal", adminRoles: ["gerencia"] }),
+    // Cloudflare Turnstile en el inicio de sesión para frenar bots antes de revisar
+    // credenciales. La clave secreta viene de TURNSTILE_SECRET_KEY
+    captcha({
+      provider: "cloudflare-turnstile",
+      secretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
+      endpoints: ["/sign-in/email"],
+    }),
+  ],
 });
 
 export type Sesion = typeof auth.$Infer.Session;

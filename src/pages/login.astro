@@ -8,9 +8,19 @@ export const prerender = false;
 
 // Quien ya entró no tiene nada que hacer aquí: va a su panel
 if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
+
+const turnstileSiteKey =
+  process.env.PUBLIC_TURNSTILE_SITE_KEY ?? import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 ---
 
 <Layout titulo="Acceder al sistema" descripcion="Acceso al sistema de VetCareHub para el personal y los clientes.">
+  <script
+    is:inline
+    slot="head"
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    async
+    defer
+  ></script>
   <div class="page">
     <Header />
     <!-- A la izquierda el formulario y a la derecha Canela en su cuarto: la pared menta y
@@ -69,6 +79,16 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
             </button>
           </div>
 
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSiteKey}
+            data-theme="light"
+            data-language="es"
+            data-size="flexible"
+            data-action="login"
+          >
+          </div>
+
           <p id="error-acceso" class="error" role="alert"></p>
 
           <button type="submit" class="entrar">Entrar</button>
@@ -94,6 +114,7 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
   const ver = form?.querySelector<HTMLButtonElement>(".ver");
   const canela = document.querySelector<SVGElement>(".canela");
   const campos = form?.querySelectorAll<HTMLInputElement>("#email, #password");
+  const turnstile = form?.querySelector<HTMLElement>(".cf-turnstile");
 
   // Con el error a la vista los dos campos se marcan como inválidos para el lector de
   // pantalla: el mensaje no dice cuál de los dos estaba mal
@@ -125,6 +146,13 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
     if (!form.reportValidity() || !error || !entrar) return;
 
     const datos = new FormData(form);
+    const tokenTurnstile = String(datos.get("cf-turnstile-response") ?? "").trim();
+    if (!tokenTurnstile) {
+      error.textContent = "Completa la verificación de seguridad antes de entrar.";
+      marcarInvalidos(false);
+      return;
+    }
+
     // Se vuelve a ocultar para que el navegador no la guarde ni la deje a la vista
     mostrarPassword(false);
     error.textContent = "";
@@ -137,6 +165,11 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
     const { error: fallo } = await authClient.signIn.email({
       email: String(datos.get("email")),
       password: String(datos.get("password")),
+      fetchOptions: {
+        headers: {
+          "x-captcha-response": tokenTurnstile,
+        },
+      },
     });
 
     // El personal va al dashboard; a los clientes el middleware los manda a su panel
@@ -145,15 +178,22 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
       return;
     }
 
+    // El token de Turnstile es de un solo uso; se reinicia para el siguiente intento
+    window.turnstile?.reset(turnstile ?? undefined);
+
+    const esFalloCaptcha =
+      fallo.code === "MISSING_RESPONSE" || fallo.code === "VERIFICATION_FAILED";
+
     // El mismo mensaje si el correo no existe o la contraseña está mal, para no revelar
     // qué correos tienen cuenta; si la cuenta fue dada de baja se indica claramente
-    error.textContent =
-      fallo.status === 429
+    error.textContent = esFalloCaptcha
+      ? "No se pudo completar la verificación de seguridad. Inténtalo de nuevo."
+      : fallo.status === 429
         ? "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
         : fallo.code === "BANNED_USER" || fallo.status === 403
           ? "Esta cuenta está dada de baja. Consulta a la gerencia."
           : "El correo o la contraseña no son correctos.";
-    marcarInvalidos(fallo.status !== 429);
+    marcarInvalidos(!esFalloCaptcha && fallo.status !== 429);
     canela?.classList.remove("esperando");
     entrar.disabled = false;
     entrar.textContent = "Entrar";
@@ -345,6 +385,11 @@ if (Astro.locals.user) return Astro.redirect(inicioDe(Astro.locals.user.role));
         display: block;
       }
     }
+  }
+
+  .cf-turnstile {
+    margin-bottom: 18px;
+    min-height: 65px;
   }
 
   .error {
