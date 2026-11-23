@@ -1,7 +1,7 @@
 ---
 import Sistema from "../../layouts/Sistema.astro";
 import Icono from "../../components/sistema/Icono.astro";
-import CarnetCliente from "../../components/sistema/CarnetCliente.astro";
+import Mascota from "../../assets/mascota.svg";
 import { pool } from "../../lib/db";
 import { aplicarCorteDeCierre19h } from "../../lib/cron-citas";
 import { acciones } from "../../lib/permisos";
@@ -10,16 +10,17 @@ import {
   calcularPuntosVisitas,
   MESES_CADUCIDAD_PUNTOS,
   nivelDePuntos,
+  nivelesCarnet,
   type Servicio,
 } from "../../lib/citas";
 import { fecha, normalizar, numero } from "../../lib/formato";
-import type { MascotaCarnet, VisitaCarnet } from "../../lib/pdf-carnet";
 
 export const prerender = false;
 
 const user = Astro.locals.user!;
 const puedeVer = acciones(user.role, "historial").includes("ver");
 const hoy = ahoraEnClinica().fecha;
+const clienteInicial = Astro.url.searchParams.get("cliente") || "";
 
 await aplicarCorteDeCierre19h();
 
@@ -28,8 +29,7 @@ type ClienteFila = {
   nombre: string;
   correo: string;
   telefono: string | null;
-  alta: Date;
-  mascotas: number;
+  mascotas: string[];
   visitas_totales: number;
   visitas_completadas: { fecha: string; servicio: Servicio }[] | null;
 };
@@ -37,8 +37,11 @@ type ClienteFila = {
 const filasClientes = puedeVer
   ? (
       await pool.query<ClienteFila>(
-        `select u.id, u.name as nombre, u.email as correo, u.telefono, u."createdAt" as alta,
-                (select count(*)::int from mascotas m where m.cliente_id = u.id) as mascotas,
+        `select u.id, u.name as nombre, u.email as correo, u.telefono,
+                coalesce(
+                  (select array_agg(m.nombre order by m.nombre) from mascotas m where m.cliente_id = u.id),
+                  '{}'
+                ) as mascotas,
                 (select count(*)::int from citas c join mascotas m on m.id = c.mascota_id
                  where m.cliente_id = u.id) as visitas_totales,
                 (select json_agg(json_build_object('fecha', to_char(c.fecha, 'YYYY-MM-DD'), 'servicio', c.servicio))
@@ -63,59 +66,37 @@ const clientesConPuntos = filasClientes.map((c) => {
     ...c,
     completadas: lista.length,
     puntos: resumen.vigentes,
+    vencidos: resumen.vencidos,
     proximoVencimiento: resumen.proximoVencimiento,
     nivel,
   };
 });
-
-const parametroCliente = Astro.url.searchParams.get("cliente");
-const elegido =
-  clientesConPuntos.find((c) => c.id === parametroCliente) ??
-  clientesConPuntos.find((c) => c.completadas > 0 || c.mascotas > 0) ??
-  clientesConPuntos[0] ??
-  null;
-
-const [mascotasElegido, visitasElegido] =
-  puedeVer && elegido
-    ? await Promise.all([
-        pool
-          .query<MascotaCarnet>(
-            `select id, nombre, especie, raza, to_char(nacimiento, 'YYYY-MM-DD') as nacimiento, notas
-             from mascotas
-             where cliente_id = $1
-             order by nombre`,
-            [elegido.id],
-          )
-          .then(({ rows }) => rows),
-        pool
-          .query<VisitaCarnet>(
-            `select c.id, c.mascota_id, m.nombre as mascota, m.especie,
-                    to_char(c.fecha, 'YYYY-MM-DD') as fecha, to_char(c.hora, 'HH24:MI') as hora,
-                    c.servicio, c.motivo, c.estado
-             from citas c
-             join mascotas m on m.id = c.mascota_id
-             where m.cliente_id = $1
-             order by c.fecha desc, c.hora desc`,
-            [elegido.id],
-          )
-          .then(({ rows }) => rows),
-      ])
-    : [[], []];
 ---
 
 <Sistema titulo="Historial y carnet">
   {
     puedeVer && clientesConPuntos.length > 0 && (
-      <label slot="acciones" class="buscador campo">
-        <span class="visualmente-oculto">Buscar carnet de cliente</span>
-        <Icono nombre="buscar" />
-        <input
-          id="buscar"
-          type="search"
-          placeholder="Buscar por cliente, correo o nivel…"
-          autocomplete="off"
-        />
-      </label>
+      <>
+        <label slot="acciones" class="buscador campo">
+          <span class="visualmente-oculto">Buscar carnet de cliente</span>
+          <Icono nombre="buscar" />
+          <input
+            id="buscar"
+            type="search"
+            placeholder="Buscar cliente, correo o mascota…"
+            autocomplete="off"
+          />
+        </label>
+        <label slot="acciones" class="filtro-nivel campo">
+          <span class="visualmente-oculto">Filtrar por nivel</span>
+          <select id="filtro-nivel">
+            <option value="todos">Todos los niveles</option>
+            {nivelesCarnet.map((n) => (
+              <option value={n.clave}>{n.nombre}</option>
+            ))}
+          </select>
+        </label>
+      </>
     )
   }
 
@@ -129,135 +110,470 @@ const [mascotasElegido, visitasElegido] =
       </p>
     ) : (
       <>
+        <p class="nota-caducidad">
+          Haz clic en cualquier cliente para abrir su carnet clínico y descargar su PDF en blanco y
+          negro. Los puntos acumulados tienen una caducidad de{" "}
+          <strong>{MESES_CADUCIDAD_PUNTOS} meses</strong> desde cada cita completada.
+        </p>
+
         <div class="marco-tabla" tabindex="0" role="region" aria-label="Carnets y puntos por cliente">
-          <table id="tabla">
+          <table id="tabla" data-cliente-inicial={clienteInicial}>
             <thead>
               <tr>
                 <th class="fija-inicio">Cliente</th>
-                <th>Correo</th>
-                <th class="numero">Mascotas</th>
-                <th class="numero">Visitas completadas</th>
-                <th class="numero">Puntos vigentes ({MESES_CADUCIDAD_PUNTOS} meses)</th>
+                <th>Mascotas</th>
+                <th class="numero">Puntos vigentes</th>
                 <th>Próximo vencimiento</th>
-                <th>Nivel del carnet</th>
+                <th>Nivel</th>
                 <th class="fija-fin">Carnet</th>
               </tr>
             </thead>
             <tbody>
-              {clientesConPuntos.map((c) => {
-                const seleccionado = elegido?.id === c.id;
-                return (
-                  <tr
-                    class:list={{ "fila-activa": seleccionado }}
-                    data-buscar={normalizar(
-                      [c.nombre, c.correo, c.telefono, c.nivel.nombre].join(" "),
-                    )}
-                  >
-                    <td class="fija-inicio nombre">
-                      <a href={`/dashboard/historial?cliente=${c.id}#vista-carnet`}>
-                        {c.nombre}
-                      </a>
-                    </td>
-                    <td translate="no">{c.correo}</td>
-                    <td class="numero">{numero.format(c.mascotas)}</td>
-                    <td class="numero">
-                      {numero.format(c.completadas)}
-                      <span class="secundario"> de {numero.format(c.visitas_totales)}</span>
-                    </td>
-                    <td class="numero">
-                      <span class="sello-tabla">{numero.format(c.puntos)} pts</span>
-                    </td>
-                    <td class="secundario">
-                      {c.proximoVencimiento ? (
-                        <>
-                          {numero.format(c.proximoVencimiento.puntos)} pts ·{" "}
-                          {fecha.format(new Date(`${c.proximoVencimiento.fecha}T00:00:00Z`))}
-                        </>
-                      ) : (
-                        `Vigencia de ${MESES_CADUCIDAD_PUNTOS} meses`
-                      )}
-                    </td>
-                    <td>
-                      <span class="etiqueta">{c.nivel.nombre}</span>
-                    </td>
-                    <td class="fija-fin">
-                      <div class="acciones">
-                        <a
-                          class:list={["boton-ver", { activo: seleccionado }]}
-                          href={`/dashboard/historial?cliente=${c.id}#vista-carnet`}
-                          aria-current={seleccionado ? "true" : undefined}
-                        >
-                          <Icono nombre="carnet" />
-                          {seleccionado ? "Viendo" : "Ver carnet"}
-                        </a>
-                        <a
-                          class="boton-icono"
-                          href={`/api/carnet/${c.id}.pdf`}
-                          download
-                          aria-label={`Descargar carnet de ${c.nombre} en PDF`}
-                          title="Descargar carnet en PDF"
-                        >
-                          <Icono nombre="descargar" />
-                        </a>
+              {clientesConPuntos.map((c) => (
+                <tr
+                  class="fila-cliente"
+                  data-id={c.id}
+                  data-nivel={c.nivel.clave}
+                  data-buscar={normalizar(
+                    [c.nombre, c.correo, c.telefono, c.nivel.nombre, ...c.mascotas].join(" "),
+                  )}
+                >
+                  <td class="fija-inicio">
+                    <div class="nombre">{c.nombre}</div>
+                    <div class="correo-sub" translate="no">{c.correo}</div>
+                  </td>
+                  <td>
+                    {c.mascotas.length > 0 ? (
+                      <div class="chips-mascotas">
+                        {c.mascotas.map((m) => (
+                          <span class="chip-mascota">{m}</span>
+                        ))}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                    ) : (
+                      <span class="secundario">Sin mascotas</span>
+                    )}
+                  </td>
+                  <td class="numero">
+                    <span class="sello-tabla">{numero.format(c.puntos)} pts</span>
+                    {c.vencidos > 0 && (
+                      <div class="vencidos-sub">{numero.format(c.vencidos)} caducados</div>
+                    )}
+                  </td>
+                  <td class="secundario tabular">
+                    {c.proximoVencimiento ? (
+                      <>
+                        <strong>{numero.format(c.proximoVencimiento.puntos)} pts</strong> ·{" "}
+                        {fecha.format(new Date(`${c.proximoVencimiento.fecha}T00:00:00Z`))}
+                      </>
+                    ) : (
+                      `Vigencia ${MESES_CADUCIDAD_PUNTOS} meses`
+                    )}
+                  </td>
+                  <td>
+                    <span class:list={["etiqueta", { "nivel-oro": c.nivel.clave === "oro" }]}>
+                      {c.nivel.nombre}
+                    </span>
+                  </td>
+                  <td class="fija-fin">
+                    <div class="acciones">
+                      <button
+                        type="button"
+                        class="boton-abrir"
+                        data-abrir-carnet={c.id}
+                      >
+                        Abrir carnet
+                      </button>
+                      <a
+                        class="boton-icono"
+                        href={`/api/carnet/${c.id}.pdf`}
+                        download
+                        aria-label={`Descargar carnet de ${c.nombre} en PDF`}
+                        title="Descargar PDF en blanco y negro"
+                      >
+                        <Icono nombre="descargar" />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
+
+        <div class="paginacion" id="paginacion" aria-label="Paginación de clientes">
+          <span id="info-pagina" class="info-pagina tabular"></span>
+          <div id="botones-pagina" class="botones-pagina"></div>
+        </div>
+
         <p class="vacio sin-resultados" hidden />
 
-        {elegido && (
-          <section id="vista-carnet" class="bloque-carnet" aria-label={`Carnet de ${elegido.nombre}`}>
-            <CarnetCliente
-              carnet={{
-                id: elegido.id,
-                nombre: elegido.nombre,
-                correo: elegido.correo,
-                telefono: elegido.telefono,
-                alta: elegido.alta,
-                mascotas: mascotasElegido,
-                visitas: visitasElegido,
-              }}
-            />
-          </section>
-        )}
+        <!-- Modal de cartilla veterinaria de dos hojas (lado derecho scroleable) -->
+        <dialog id="modal-carnet" class="modal-cartilla" aria-labelledby="m-titular">
+          <div class="cartilla-layout">
+            <!-- Hoja izquierda fija: Portada con Canela, puntos y PDF -->
+            <aside class="m-portada">
+              <div class="m-portada-arriba">
+                <div class="m-cabecera">
+                  <div class="m-marca">
+                    <div class="m-canela-marco" aria-hidden="true">
+                      <Mascota class="m-canela-svg" />
+                    </div>
+                    <div>
+                      <span class="m-clinica" translate="no">VetCareHub</span>
+                      <span class="m-sub">Carnet clínico</span>
+                    </div>
+                  </div>
+                  <span class="m-folio tabular" data-folio translate="no"></span>
+                </div>
+
+                <div class="m-titular-bloque">
+                  <p class="m-label">Titular del carnet</p>
+                  <h2 id="m-titular" class="m-nombre" data-nombre>Cargando…</h2>
+                  <p class="m-meta" data-correo translate="no"></p>
+                  <p class="m-meta" data-telefono></p>
+                </div>
+
+                <div class="m-caja-puntos">
+                  <div class="m-caja-top">
+                    <span class="m-label">Puntos vigentes</span>
+                    <span class="m-nivel" data-nivel-nombre></span>
+                  </div>
+                  <p class="m-cifra tabular">
+                    <span data-puntos>0</span> <small>pts</small>
+                  </p>
+                  <div class="m-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-barra>
+                    <div class="m-barra-relleno" data-barra-relleno></div>
+                  </div>
+                  <p class="m-beneficio" data-beneficio></p>
+                </div>
+
+                <div class="m-caducidad" data-caducidad></div>
+              </div>
+
+              <a class="m-btn-pdf" data-pdf-link href="#" download>
+                <Icono nombre="descargar" />
+                Descargar carnet en PDF
+              </a>
+            </aside>
+
+            <!-- Hoja derecha: barra de filtros por mascota fija + lista de visitas scroleable -->
+            <div class="m-expediente">
+              <div class="m-expediente-top">
+                <div class="m-filtros-mascota" data-filtros-mascota role="group" aria-label="Filtrar visitas por mascota"></div>
+                <button type="button" class="boton m-cerrar" data-cerrar-modal>
+                  Cerrar
+                </button>
+              </div>
+              <div class="m-visitas-scroll" data-visitas-lista tabindex="0" role="region" aria-label="Historial de visitas del cliente"></div>
+            </div>
+          </div>
+        </dialog>
       </>
     )
   }
 </Sistema>
 
 <script>
-  import { activarBuscador } from "../../scripts/sistema";
+  import { normalizar } from "../../lib/formato";
+  import { mostrarError } from "../../scripts/sistema";
 
+  const POR_PAGINA = 10;
   const tabla = document.querySelector<HTMLTableElement>("#tabla");
-  activarBuscador(document.querySelector("#buscar"), tabla);
+  const buscador = document.querySelector<HTMLInputElement>("#buscar");
+  const filtroNivel = document.querySelector<HTMLSelectElement>("#filtro-nivel");
+  const sinResultados = document.querySelector<HTMLElement>(".sin-resultados");
+  const paginacion = document.querySelector<HTMLElement>("#paginacion");
+  const infoPagina = document.querySelector<HTMLElement>("#info-pagina");
+  const botonesPagina = document.querySelector<HTMLElement>("#botones-pagina");
+  const modal = document.querySelector<HTMLDialogElement>("#modal-carnet");
+
+  const todasLasFilas = tabla
+    ? [...tabla.querySelectorAll<HTMLTableRowElement>("tbody tr")]
+    : [];
+  let paginaActual = 1;
+
+  const aplicarFiltrosYPaginacion = () => {
+    const texto = normalizar(buscador?.value.trim() ?? "");
+    const nivel = filtroNivel?.value ?? "todos";
+
+    const coincidentes = todasLasFilas.filter((fila) => {
+      const matchTexto = !texto || (fila.dataset.buscar?.includes(texto) ?? true);
+      const matchNivel = nivel === "todos" || fila.dataset.nivel === nivel;
+      return matchTexto && matchNivel;
+    });
+
+    const total = coincidentes.length;
+    const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+    const inicio = (paginaActual - 1) * POR_PAGINA;
+    const fin = Math.min(inicio + POR_PAGINA, total);
+    const visibles = new Set(coincidentes.slice(inicio, fin));
+
+    for (const fila of todasLasFilas) {
+      fila.hidden = !visibles.has(fila);
+    }
+
+    if (sinResultados) {
+      sinResultados.hidden = total > 0;
+      sinResultados.textContent = "No hay clientes que coincidan con los filtros seleccionados.";
+    }
+
+    if (paginacion && infoPagina && botonesPagina) {
+      paginacion.hidden = total === 0;
+      infoPagina.textContent = `Mostrando ${inicio + 1}–${fin} de ${total} ${
+        total === 1 ? "cliente" : "clientes"
+      } · Página ${paginaActual} de ${totalPaginas}`;
+
+      botonesPagina.innerHTML = "";
+      if (totalPaginas > 1) {
+        const crearBtn = (etiqueta: string, destino: number, deshabilitado: boolean, actual = false) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = actual ? "boton principal btn-pag" : "boton btn-pag";
+          btn.textContent = etiqueta;
+          btn.disabled = deshabilitado;
+          if (actual) btn.setAttribute("aria-current", "page");
+          btn.addEventListener("click", () => {
+            paginaActual = destino;
+            aplicarFiltrosYPaginacion();
+          });
+          return btn;
+        };
+
+        botonesPagina.append(crearBtn("Anterior", paginaActual - 1, paginaActual === 1));
+        for (let p = 1; p <= totalPaginas; p++) {
+          botonesPagina.append(crearBtn(String(p), p, false, p === paginaActual));
+        }
+        botonesPagina.append(crearBtn("Siguiente", paginaActual + 1, paginaActual === totalPaginas));
+      }
+    }
+  };
+
+  buscador?.addEventListener("input", () => {
+    paginaActual = 1;
+    aplicarFiltrosYPaginacion();
+  });
+  filtroNivel?.addEventListener("change", () => {
+    paginaActual = 1;
+    aplicarFiltrosYPaginacion();
+  });
+  aplicarFiltrosYPaginacion();
+
+  // Lógica de la modal de cartilla
+  type CarnetJson = {
+    id: string;
+    folio: string;
+    nombre: string;
+    correo: string;
+    telefono: string | null;
+    altaTexto: string;
+    mesesCaducidad: number;
+    puntosVigentes: number;
+    puntosVencidos: number;
+    proximoVencimiento: { puntos: number; fechaTexto: string } | null;
+    nivel: { nombre: string; beneficio: string; progreso: number };
+    mascotas: { id: string; nombre: string; especie: string; puntosVigentes: number }[];
+    visitas: {
+      id: string;
+      mascota_id: string;
+      mascota: string;
+      fechaTexto: string;
+      hora: string;
+      servicio: string;
+      costo: string;
+      motivo: string | null;
+      estado: string;
+      estadoTexto: string;
+      puntos: number;
+      vigente: boolean | null;
+      caducaTexto: string;
+    }[];
+  };
+
+  const formatoNum = new Intl.NumberFormat("es-MX");
+  let carnetActual: CarnetJson | null = null;
+  let filtroMascota = "todas";
+
+  const escapar = (s: string) =>
+    s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+  const renderVisitasModal = () => {
+    if (!modal || !carnetActual) return;
+    const listaEl = modal.querySelector<HTMLElement>("[data-visitas-lista]")!;
+    const filtrosEl = modal.querySelector<HTMLElement>("[data-filtros-mascota]")!;
+
+    filtrosEl.innerHTML = [
+      `<button type="button" class="m-chip" data-fm="todas" aria-pressed="${filtroMascota === "todas"}">Todas (${carnetActual.visitas.length})</button>`,
+      ...carnetActual.mascotas.map(
+        (m) =>
+          `<button type="button" class="m-chip" data-fm="${escapar(m.id)}" aria-pressed="${
+            filtroMascota === m.id
+          }">${escapar(m.nombre)} · ${escapar(m.especie)} (+${formatoNum.format(m.puntosVigentes)} pts)</button>`,
+      ),
+    ].join("");
+
+    filtrosEl.querySelectorAll<HTMLButtonElement>("[data-fm]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filtroMascota = btn.dataset.fm ?? "todas";
+        renderVisitasModal();
+      });
+    });
+
+    const visitas =
+      filtroMascota === "todas"
+        ? carnetActual.visitas
+        : carnetActual.visitas.filter((v) => v.mascota_id === filtroMascota);
+
+    if (visitas.length === 0) {
+      listaEl.innerHTML = `<p class="m-vacio">No hay citas registradas para esta selección.</p>`;
+      return;
+    }
+
+    listaEl.innerHTML = visitas
+      .map((v) => {
+        const claseCard =
+          v.vigente === false || v.estado === "cancelada" ? "m-visita apagada" : "m-visita";
+        let bloquePts = "";
+        if (v.estado === "completada") {
+          bloquePts = `
+            <span class="m-sello ${v.vigente ? "" : "vencido"}">+${formatoNum.format(v.puntos)} pts</span>
+            <span class="m-cad-item ${v.vigente ? "" : "alerta"}">${
+              v.vigente ? "Caducan" : "Vencieron"
+            } ${escapar(v.caducaTexto)}</span>`;
+        } else if (v.estado === "cancelada") {
+          bloquePts = `<span class="m-pts-neutro">0 pts</span><span class="m-cad-item">Cita cancelada</span>`;
+        } else {
+          bloquePts = `<span class="m-pts-neutro">+${formatoNum.format(v.puntos)} al completar</span><span class="m-cad-item">Vigencia ${carnetActual!.mesesCaducidad} meses</span>`;
+        }
+
+        return `
+          <div class="${claseCard}">
+            <div class="m-visita-izq">
+              <div class="m-visita-top">
+                <strong>${escapar(v.servicio)}</strong>
+                <span class="m-pill-mascota">${escapar(v.mascota)}</span>
+              </div>
+              <p class="m-visita-meta tabular">${escapar(v.fechaTexto)} · ${escapar(v.hora)} h · ${escapar(v.costo)} · ${escapar(v.estadoTexto)}</p>
+              ${v.motivo ? `<p class="m-visita-motivo">${escapar(v.motivo)}</p>` : ""}
+            </div>
+            <div class="m-visita-der tabular">
+              <div class="m-visita-pts">${bloquePts}</div>
+              <a class="m-recibo-link" href="/api/citas/${encodeURIComponent(v.id)}.pdf" download title="Descargar comprobante PDF" aria-label="Descargar comprobante PDF de ${escapar(v.mascota)}">PDF</a>
+            </div>
+          </div>`;
+      })
+      .join("");
+  };
+
+  const abrirModalCliente = async (id: string) => {
+    if (!modal) return;
+    modal.querySelector("[data-nombre]")!.textContent = "Cargando carnet…";
+    modal.querySelector("[data-visitas-lista]")!.innerHTML = `<p class="m-vacio">Cargando historial…</p>`;
+    modal.showModal();
+
+    try {
+      const res = await fetch(`/api/carnet/${encodeURIComponent(id)}.json`);
+      if (!res.ok) throw new Error();
+      const datos = (await res.json()) as CarnetJson;
+      carnetActual = datos;
+      filtroMascota = "todas";
+
+      modal.querySelector("[data-folio]")!.textContent = `#${datos.folio}`;
+      modal.querySelector("[data-nombre]")!.textContent = datos.nombre;
+      modal.querySelector("[data-correo]")!.textContent = datos.correo;
+      modal.querySelector("[data-telefono]")!.textContent =
+        `Tel. ${datos.telefono ?? "No registrado"} · Desde ${datos.altaTexto}`;
+      modal.querySelector("[data-nivel-nombre]")!.textContent = datos.nivel.nombre;
+      modal.querySelector("[data-puntos]")!.textContent = formatoNum.format(datos.puntosVigentes);
+      modal.querySelector("[data-beneficio]")!.textContent = datos.nivel.beneficio;
+
+      const barra = modal.querySelector<HTMLElement>("[data-barra]")!;
+      barra.setAttribute("aria-valuenow", String(datos.nivel.progreso));
+      modal.querySelector<HTMLElement>("[data-barra-relleno]")!.style.width =
+        `${datos.nivel.progreso}%`;
+
+      const cadEl = modal.querySelector<HTMLElement>("[data-caducidad]")!;
+      cadEl.innerHTML =
+        `<strong>Caducidad de ${datos.mesesCaducidad} meses:</strong> ` +
+        (datos.proximoVencimiento
+          ? `próximo vencimiento de <strong>${formatoNum.format(
+              datos.proximoVencimiento.puntos,
+            )} pts</strong> el <strong>${escapar(datos.proximoVencimiento.fechaTexto)}</strong>.`
+          : `los puntos de cada visita completada tienen vigencia de ${datos.mesesCaducidad} meses.`) +
+        (datos.puntosVencidos > 0
+          ? `<div class="m-vencidos-nota">${formatoNum.format(datos.puntosVencidos)} pts anteriores ya caducaron.</div>`
+          : "");
+
+      const pdfLink = modal.querySelector<HTMLAnchorElement>("[data-pdf-link]")!;
+      pdfLink.href = `/api/carnet/${encodeURIComponent(datos.id)}.pdf`;
+
+      renderVisitasModal();
+    } catch {
+      modal.close();
+      mostrarError("No se pudo cargar el carnet de este cliente.");
+    }
+  };
+
+  tabla?.addEventListener("click", (event) => {
+    const target = event.target as Element;
+    if (target.closest("a")) return;
+    const fila = target.closest<HTMLTableRowElement>("tr[data-id]");
+    if (fila?.dataset.id) abrirModalCliente(fila.dataset.id);
+  });
+
+  modal?.querySelector("[data-cerrar-modal]")?.addEventListener("click", () => modal.close());
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal) modal.close();
+  });
+
+  // Si se abrió con ?cliente=<id> desde la tabla de Clientes, abre su carnet en automático
+  if (tabla?.dataset.clienteInicial) {
+    abrirModalCliente(tabla.dataset.clienteInicial);
+  }
 </script>
 
 <style>
-  .nombre {
-    font-family: var(--font-bold);
+  .filtro-nivel {
+    min-width: 190px;
+  }
 
-    a {
-      color: inherit;
-      text-decoration: none;
+  .nota-caducidad {
+    margin: -10px 0 18px;
+    color: var(--color-accent-texto);
+    font-size: 0.96rem;
+    line-height: 1.45;
+  }
 
-      &:hover {
-        color: var(--color-accent-texto);
-        text-decoration: underline;
-      }
+  .fila-cliente {
+    cursor: pointer;
 
-      &:focus-visible {
-        outline: var(--focus-ring);
-        outline-offset: 2px;
-      }
+    &:hover td {
+      background-color: color-mix(in oklch, var(--color-mint) 35%, white);
     }
   }
 
-  tr.fila-activa td {
-    background-color: color-mix(in oklch, var(--color-mint) 45%, white);
+  .nombre {
+    font-family: var(--font-bold);
+  }
+
+  .correo-sub {
+    color: var(--color-accent-texto);
+    font-size: 0.88rem;
+  }
+
+  .chips-mascotas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip-mascota {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background-color: var(--color-mint);
+    font-family: var(--font-bold);
+    font-size: 0.86rem;
   }
 
   .sello-tabla {
@@ -271,23 +587,282 @@ const [mascotasElegido, visitasElegido] =
     font-variant-numeric: tabular-nums;
   }
 
+  .vencidos-sub {
+    margin-top: 2px;
+    color: #8a3b0c;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nivel-oro {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+
   .acciones {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .boton-ver {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+  .boton-abrir {
+    padding: 7px 14px;
     border: var(--border);
     border-radius: 8px;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 0.9rem;
+    cursor: pointer;
+
+    &:hover {
+      background-color: color-mix(in oklch, var(--color-primary) 85%, var(--color-accent));
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  .paginacion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .info-pagina {
+    color: var(--color-accent-texto);
+    font-family: var(--font-bold);
+    font-size: 0.92rem;
+  }
+
+  .botones-pagina {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    :global(.btn-pag) {
+      padding: 6px 12px;
+      font-size: 0.9rem;
+    }
+  }
+
+  /* Modal de cartilla de dos hojas */
+  .modal-cartilla {
+    width: min(100% - 28px, 940px);
+    max-height: min(90dvh, 720px);
+    padding: 0;
+    border: var(--border);
+    border-radius: 18px;
+    background-color: var(--color-white);
+    color: var(--color-primary);
+    overflow: hidden;
+    overscroll-behavior: contain;
+
+    &::backdrop {
+      background-color: color-mix(in oklch, var(--color-primary) 50%, transparent);
+    }
+  }
+
+  .cartilla-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    height: min(90dvh, 720px);
+    max-height: min(90dvh, 720px);
+  }
+
+  @media (max-width: 820px) {
+    .modal-cartilla {
+      max-height: 92dvh;
+      overflow-y: auto;
+    }
+
+    .cartilla-layout {
+      grid-template-columns: 1fr;
+      height: auto;
+      max-height: none;
+    }
+  }
+
+  .m-portada {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    overflow-y: auto;
+  }
+
+  .m-portada-arriba {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .m-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .m-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .m-canela-marco {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background-color: var(--color-mint);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .m-canela-svg {
+    width: 48px;
+    height: 48px;
+    display: block;
+  }
+
+  .m-clinica {
+    display: block;
+    font-family: var(--font-bold);
+    font-size: 1.05rem;
+    line-height: 1.1;
+  }
+
+  .m-sub {
+    display: block;
+    color: var(--color-mint);
+    font-size: 0.84rem;
+  }
+
+  .m-folio {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.15);
+    font-family: var(--font-bold);
+    font-size: 0.78rem;
+  }
+
+  .m-titular-bloque {
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .m-label {
+    margin: 0;
+    color: var(--color-mint);
+    font-size: 0.82rem;
+  }
+
+  .m-nombre {
+    margin: 3px 0;
+    font-family: var(--font-bold);
+    font-size: 1.3rem;
+    line-height: 1.2;
+  }
+
+  .m-meta {
+    margin: 2px 0 0;
+    color: rgba(255, 255, 255, 0.84);
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+  }
+
+  .m-caja-puntos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+
+  .m-caja-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .m-nivel {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background-color: var(--color-accent);
+    color: var(--color-white);
+    font-family: var(--font-bold);
+    font-size: 0.78rem;
+  }
+
+  .m-cifra {
+    margin: 0;
+    font-family: var(--font-bold);
+    font-size: 2rem;
+    line-height: 1;
+
+    small {
+      font-size: 0.95rem;
+    }
+  }
+
+  .m-barra {
+    height: 9px;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+  }
+
+  .m-barra-relleno {
+    height: 100%;
+    width: 0;
+    background-color: var(--color-mint);
+  }
+
+  .m-beneficio {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .m-caducidad {
+    padding: 11px 13px;
+    border-radius: 12px;
+    background-color: var(--color-mint);
+    color: var(--color-primary);
+    font-size: 0.84rem;
+    line-height: 1.42;
+
+    :global(.m-vencidos-nota) {
+      margin-top: 4px;
+      color: #8a3b0c;
+      font-family: var(--font-bold);
+    }
+  }
+
+  .m-btn-pdf {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
     background-color: var(--color-white);
     color: var(--color-primary);
     font-family: var(--font-bold);
-    font-size: 0.92rem;
+    font-size: 0.96rem;
     text-decoration: none;
 
     &:hover {
@@ -298,20 +873,186 @@ const [mascotasElegido, visitasElegido] =
       outline: var(--focus-ring);
       outline-offset: 2px;
     }
+  }
 
-    &.activo {
-      background-color: var(--color-primary);
-      color: var(--color-white);
-    }
+  /* Lado derecho de la modal: barra fija + lista scroleable */
+  .m-expediente {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background-color: var(--color-surface);
+  }
 
-    :global(.icono) {
-      width: 18px;
-      height: 18px;
+  .m-expediente-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 18px;
+    border-bottom: var(--border);
+    background-color: var(--color-white);
+    flex-shrink: 0;
+  }
+
+  .m-filtros-mascota {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    :global(.m-chip) {
+      padding: 6px 12px;
+      border: var(--border);
+      border-radius: 9px;
+      background-color: var(--color-white);
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 0.84rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--color-mint);
+      }
+
+      &[aria-pressed="true"] {
+        background-color: var(--color-primary);
+        color: var(--color-white);
+      }
     }
   }
 
-  .bloque-carnet {
-    margin-top: 32px;
-    scroll-margin-top: 24px;
+  .m-cerrar {
+    padding: 6px 14px;
+    font-size: 0.88rem;
+  }
+
+  .m-visitas-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    :global(.m-visita) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 15px;
+      border: var(--border);
+      border-radius: 12px;
+      background-color: var(--color-white);
+
+      &.apagada {
+        border-color: color-mix(in oklch, var(--color-primary) 24%, transparent);
+        opacity: 0.78;
+      }
+    }
+
+    :global(.m-visita-izq) {
+      min-width: 0;
+    }
+
+    :global(.m-visita-top) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    :global(.m-pill-mascota) {
+      padding: 2px 9px;
+      border-radius: 999px;
+      background-color: var(--color-mint);
+      font-family: var(--font-bold);
+      font-size: 0.8rem;
+    }
+
+    :global(.m-visita-meta) {
+      margin: 4px 0 0;
+      color: var(--color-accent-texto);
+      font-size: 0.86rem;
+    }
+
+    :global(.m-visita-motivo) {
+      margin: 4px 0 0;
+      color: color-mix(in oklch, var(--color-primary) 70%, white);
+      font-size: 0.84rem;
+    }
+
+    :global(.m-visita-der) {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    :global(.m-visita-pts) {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    :global(.m-sello) {
+      padding: 2px 9px;
+      border: 1.5px solid var(--color-primary);
+      border-radius: 999px;
+      background-color: var(--color-mint);
+      font-family: var(--font-bold);
+      font-size: 0.85rem;
+
+      &.vencido {
+        background-color: var(--color-surface);
+        border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+        text-decoration: line-through;
+      }
+    }
+
+    :global(.m-pts-neutro) {
+      font-family: var(--font-bold);
+      font-size: 0.85rem;
+      color: color-mix(in oklch, var(--color-primary) 65%, white);
+    }
+
+    :global(.m-cad-item) {
+      font-size: 0.78rem;
+      color: var(--color-accent-texto);
+
+      &.alerta {
+        color: #8a3b0c;
+        font-family: var(--font-bold);
+      }
+    }
+
+    :global(.m-recibo-link) {
+      padding: 5px 9px;
+      border: 1.5px solid var(--color-primary);
+      border-radius: 8px;
+      color: var(--color-primary);
+      font-family: var(--font-bold);
+      font-size: 0.78rem;
+      text-decoration: none;
+
+      &:hover {
+        background-color: var(--color-mint);
+      }
+    }
+
+    :global(.m-vacio) {
+      margin: 0;
+      padding: 24px;
+      border: var(--border);
+      border-radius: 12px;
+      background-color: var(--color-white);
+      text-align: center;
+    }
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 </style>
