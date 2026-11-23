@@ -117,7 +117,14 @@ const rectRedondeado = (
   ].join("\n");
 };
 
-const elipseRotada = (cx: number, cy: number, rx: number, ry: number, grados: number) => {
+const elipseRotada = (
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  grados: number,
+  modo: "f" | "S" | "B" = "f",
+) => {
   const rad = (grados * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -133,44 +140,59 @@ const elipseRotada = (cx: number, cy: number, rx: number, ry: number, grados: nu
     `${pt(rx, ry * k)} ${pt(rx * k, ry)} ${pt(0, ry)} c`,
     `${pt(-rx * k, ry)} ${pt(-rx, ry * k)} ${pt(-rx, 0)} c`,
     `${pt(-rx, -ry * k)} ${pt(-rx * k, -ry)} ${pt(0, -ry)} c`,
-    "h f",
+    `h ${modo}`,
   ].join("\n");
 };
 
-// Dibuja el logo de VetCareHub (src/assets/logo.svg) escalado a `tam` puntos
-const dibujarLogo = (x: number, arriba: number, tam: number) => {
-  const s = tam / 120;
-  const px = (vx: number) => n(x + vx * s);
-  const py = (vy: number) => y(arriba + vy * s);
+// Dibuja a Canela (la mascota de VetCareHub, src/assets/mascota.svg) en blanco y negro puro
+// (solo contornos y tinta negra, sin colores) dentro de un recuadro redondeado de tamaño `tam`
+const dibujarMascota = (x: number, arriba: number, tam: number) => {
+  // Recortamos alrededor de Canela en el viewBox original (265..565 x 220..580)
+  const s = tam / 340;
+  const vx = (ox: number) => x + (ox - 230) * s;
+  const vy = (oy: number) => arriba + (oy - 215) * s;
 
   return [
-    "0 g",
-    elipseRotada(x + 28 * s, arriba + 50 * s, 11 * s, 14 * s, -22),
-    elipseRotada(x + 47 * s, arriba + 30 * s, 11 * s, 15 * s, -8),
-    elipseRotada(x + 73 * s, arriba + 30 * s, 11 * s, 15 * s, 8),
-    elipseRotada(x + 92 * s, arriba + 50 * s, 11 * s, 14 * s, 22),
-    `${px(60)} ${py(106)} m`,
-    `${px(37)} ${py(91)} ${px(28)} ${py(78)} ${px(28)} ${py(67)} c`,
-    `${px(28)} ${py(56)} ${px(36)} ${py(49)} ${px(45)} ${py(49)} c`,
-    `${px(52)} ${py(49)} ${px(57)} ${py(52)} ${px(60)} ${py(57)} c`,
-    `${px(63)} ${py(52)} ${px(68)} ${py(49)} ${px(75)} ${py(49)} c`,
-    `${px(84)} ${py(49)} ${px(92)} ${py(56)} ${px(92)} ${py(67)} c`,
-    `${px(92)} ${py(78)} ${px(83)} ${py(91)} ${px(60)} ${py(106)} c`,
-    "h f",
+    "q",
     "1 g",
-    `${px(55)} ${py(64)} m`,
-    `${px(65)} ${py(64)} l`,
-    `${px(65)} ${py(73)} l`,
-    `${px(74)} ${py(73)} l`,
-    `${px(74)} ${py(83)} l`,
-    `${px(65)} ${py(83)} l`,
-    `${px(65)} ${py(92)} l`,
-    `${px(55)} ${py(92)} l`,
-    `${px(55)} ${py(83)} l`,
-    `${px(46)} ${py(83)} l`,
-    `${px(46)} ${py(73)} l`,
-    `${px(55)} ${py(73)} l`,
-    "h f",
+    "0 G",
+    "1.1 w",
+    rectRedondeado(x, arriba, tam, tam, 8, "B"),
+    // Cola
+    "1 J",
+    `${n(14 * s)} w`,
+    `${n(vx(488))} ${y(vy(512))} m`,
+    `${n(vx(545))} ${y(vy(502))} ${n(vx(562))} ${y(vy(442))} ${n(vx(538))} ${y(vy(415))} c S`,
+    // Cuerpo y patas (blanco con contorno negro)
+    "1 w",
+    "1 g",
+    "0 G",
+    elipseRotada(vx(400), vy(478), 104 * s, 84 * s, 0, "B"),
+    rectRedondeado(vx(350), vy(485), 34 * s, 66 * s, 16 * s, "B"),
+    rectRedondeado(vx(416), vy(485), 34 * s, 66 * s, 16 * s, "B"),
+    // Orejas (trazo y relleno oscuro suave en escala de grises o blanco con borde)
+    "0.88 g",
+    elipseRotada(vx(322), vy(334), 28 * s, 60 * s, 22, "B"),
+    elipseRotada(vx(478), vy(334), 28 * s, 60 * s, -22, "B"),
+    // Cabeza y hocico
+    "1 g",
+    elipseRotada(vx(400), vy(336), 88 * s, 88 * s, 0, "B"),
+    elipseRotada(vx(400), vy(372), 48 * s, 36 * s, 0, "B"),
+    // Collar y placa
+    "0 g",
+    rectRedondeado(vx(342), vy(412), 116 * s, 18 * s, 9 * s, "f"),
+    "1 g",
+    elipseRotada(vx(400), vy(442), 12 * s, 12 * s, 0, "B"),
+    // Ojos y nariz en negro sólido
+    "0 g",
+    elipseRotada(vx(366), vy(318), 10 * s, 10 * s, 0, "f"),
+    elipseRotada(vx(434), vy(318), 10 * s, 10 * s, 0, "f"),
+    elipseRotada(vx(400), vy(354), 16 * s, 11 * s, 0, "f"),
+    // Sonrisa
+    "1 w",
+    `${n(vx(400))} ${y(vy(365))} m ${n(vx(400))} ${y(vy(380))} l S`,
+    `${n(vx(382))} ${y(vy(384))} m ${n(vx(392))} ${y(vy(394))} ${n(vx(408))} ${y(vy(394))} ${n(vx(418))} ${y(vy(384))} c S`,
+    "Q",
   ].join("\n");
 };
 
@@ -208,12 +230,12 @@ export const generarPdfCarnet = (carnet: DatosCarnet): Uint8Array => {
     : `Los puntos acumulados tienen una caducidad de ${MESES_CADUCIDAD_PUNTOS} meses desde cada visita`;
 
   const ops: string[] = [
-    // Encabezado con el logo oficial de VetCareHub
-    dibujarLogo(MARGEN, 40, 44),
+    // Encabezado en blanco y negro con Canela, la mascota de VetCareHub
+    dibujarMascota(MARGEN, 38, 48),
     "0 g",
     "0 G",
-    texto("F2", 20, MARGEN + 52, 61, "VetCareHub"),
-    texto("F1", 10.5, MARGEN + 52, 77, "Carnet clínico y programa de puntos · Cuernavaca, Morelos"),
+    texto("F2", 20, MARGEN + 58, 60, "VetCareHub"),
+    texto("F1", 10.5, MARGEN + 58, 76, "Carnet clínico y programa de puntos · Cuernavaca, Morelos"),
 
     // Pastilla de puntos y nivel a la derecha
     "1.2 w",
